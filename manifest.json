@@ -1,5 +1,7 @@
 {
   "version": "8.1.01",
+  "display_name": "Therapeutic Target Database",
+  "biothing_type": "association",
   "requires": ["pandas"],
   "dumper": {
     "data_url": [
@@ -9,8 +11,7 @@
       "https://db.idrblab.net/ttd/sites/default/files/ttd_database/P1-07-Drug-TargetMapping.xlsx",
       "https://db.idrblab.net/ttd/sites/default/files/ttd_database/P1-08-Biomarker_disease.txt"
     ],
-    "uncompress": true,
-    "release": "version:get_release"
+    "uncompress": true
   },
   "uploader": {
     "parser": "TTD_parser:load_data",
