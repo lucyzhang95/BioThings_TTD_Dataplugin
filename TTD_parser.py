@@ -1,13 +1,17 @@
 import os.path
-import pandas as pd
 
 import re
-import json
 from biothings.utils.dataload import tabfile_feeder
 from collections import defaultdict
 
 
 def get_target_info(file_path):
+    """ get information from the P1-01-TTD_target_download.txt file
+    information: target_id, uniprot, target_type, bioclass of drug
+
+    Keyword arguments:
+    file_path: directory stores P1-01-TTD_target_download.txt file
+    """
     target_info_file = os.path.join(file_path, "P1-01-TTD_target_download.txt")
     assert os.path.exists(target_info_file)
 
@@ -30,10 +34,17 @@ def get_target_info(file_path):
 
 
 def load_drug_target(file_path):
-    drug_moa_file = os.path.join(file_path, "P1-07-Drug-TargetMapping.xlsx")
-    assert os.path.exists(drug_moa_file)
+    """ load data from P1-07-Drug-TargetMapping.xlsx file
+        and clean up the data
 
-    drug_target_data = pd.read_excel(drug_moa_file).to_dict(orient="records")
+    Keyword arguments:
+    file_path: directory stores P1-07-Drug-TargetMapping.xlsx file
+    """
+    import pandas as pd
+    drug_targ_file = os.path.join(file_path, "P1-07-Drug-TargetMapping.xlsx")
+    assert os.path.exists(drug_targ_file)
+
+    drug_target_data = pd.read_excel(drug_targ_file).to_dict(orient="records")
 
     for dicts in drug_target_data:
         target_info = get_target_info(file_path)
@@ -63,6 +74,12 @@ def load_drug_target(file_path):
 
 
 def load_drug_dis_data(file_path):
+    """ load data from P1-05-Drug_disease.txt file
+        and clean up the data
+
+    Keyword arguments:
+    file_path: directory stores 1-05-Drug_disease.txt file
+    """
     drug_dis_file = os.path.join(file_path, "P1-05-Drug_disease.txt")
     assert os.path.exists(drug_dis_file)
 
@@ -119,8 +136,14 @@ def load_drug_dis_data(file_path):
 
 
 def load_target_dis_data(file_path):
+    """ load data from P1-06-Target_disease.txt file
+        and clean up the data
+
+    Keyword arguments:
+    file_path: directory stores P1-06-Target_disease.txt file
+    """
     target_dis_file = os.path.join(file_path, "P1-06-Target_disease.txt")
-    assert os.path.exists
+    assert os.path.exists(target_dis_file)
 
     subject_node = None
 
@@ -162,6 +185,13 @@ def load_target_dis_data(file_path):
 
 
 def cleanup_icds(dict, icd_key, icd_prefix):
+    """ clean up the icds data for loading biomarker_dis_data
+
+    Keyword arguments:
+    dict: dictionary in biomarker_dis_data
+    icd_key: "ICD11", "ICD10", "ICD9"
+    icd_prefix:  "ICD-11", "ICD-10", "ICD-9"
+    """
     if dict[icd_key] != "." and dict[icd_key].startswith(icd_prefix):
         icd = dict[icd_key].split(":")[1].strip()
         if icd.find(",") != -1:
@@ -172,9 +202,16 @@ def cleanup_icds(dict, icd_key, icd_prefix):
 
 
 def load_biomarker_dis_data(file_path):
-    file_local = os.path.join(file_path, "P1-08-Biomarker_disease.txt")
+    """ load data from P1-08-Biomarker_disease.txt file
 
-    biomarker_list = pd.read_table(file_local, sep="\t", skiprows=15).to_dict(orient='records')
+    Keyword arguments:
+    file_path: directory stores P1-08-Biomarker_disease.txt file
+    """
+    import pandas as pd
+    biomarker_file = os.path.join(file_path, "P1-08-Biomarker_disease.txt")
+    assert os.path.exists(biomarker_file)
+
+    biomarker_list = pd.read_table(biomarker_file, sep="\t", skiprows=15).to_dict(orient='records')
 
     subject_node = {}
 
@@ -218,3 +255,19 @@ def load_biomarker_dis_data(file_path):
                     "subject": new_subject_node}
 
         yield output_dict
+
+
+def load_data(file_path):
+    """ main data load function
+
+    Keyword arguments:
+    file_path: directory stores all downloaded data files
+    """
+    import itertools
+    for doc in itertools.chain(load_drug_target(file_path),
+                               load_drug_dis_data(file_path),
+                               load_target_dis_data(file_path),
+                               load_biomarker_dis_data(file_path)):
+
+        yield doc
+
