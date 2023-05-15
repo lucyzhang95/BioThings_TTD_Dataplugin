@@ -1,12 +1,12 @@
 import os.path
-
 import re
-from biothings.utils.dataload import tabfile_feeder
 from collections import defaultdict
+
+from biothings.utils.dataload import tabfile_feeder
 
 
 def get_target_info(file_path):
-    """ get information from the P1-01-TTD_target_download.txt file
+    """get information from the P1-01-TTD_target_download.txt file
     information: target_id, uniprot, target_type, bioclass of drug
 
     Keyword arguments:
@@ -18,7 +18,7 @@ def get_target_info(file_path):
     target_info = None
 
     for line in tabfile_feeder(target_info_file, header=40):
-        if line != ['', '', '', '', '']:
+        if line != ["", "", "", "", ""]:
             if line[1].startswith("TARGETID"):
                 target_info = {}
                 target_info["target_id"] = line[2]
@@ -34,13 +34,14 @@ def get_target_info(file_path):
 
 
 def load_drug_target(file_path):
-    """ load data from P1-07-Drug-TargetMapping.xlsx file
+    """load data from P1-07-Drug-TargetMapping.xlsx file
         and clean up the data
 
     Keyword arguments:
     file_path: directory stores P1-07-Drug-TargetMapping.xlsx file
     """
     import pandas as pd
+
     drug_targ_file = os.path.join(file_path, "P1-07-Drug-TargetMapping.xlsx")
     assert os.path.exists(drug_targ_file)
 
@@ -48,13 +49,10 @@ def load_drug_target(file_path):
 
     for dicts in drug_target_data:
         target_info = get_target_info(file_path)
-        object_node = {"id": dicts["TargetID"],
-                       "type": "biolink:Protein"}
+        object_node = {"id": dicts["TargetID"], "type": "biolink:Protein"}
         drug_moa = dicts["MOA"]
 
-        subject_node = {"id": dicts["DrugID"],
-                        "trial_status": dicts["Highest_status"].lower(),
-                        "type": "biolink:Drug"}
+        subject_node = {"id": dicts["DrugID"], "trial_status": dicts["Highest_status"].lower(), "type": "biolink:Drug"}
         if drug_moa != ".":
             subject_node["moa"] = drug_moa.lower()
 
@@ -65,16 +63,13 @@ def load_drug_target(file_path):
         _id = f"{subject_node['id']}_associated_with_{object_node['id']}"
         association = {"predicate": "biolink:associated_with"}
 
-        output_dict = {"_id": _id,
-                       "association": association,
-                       "object": object_node,
-                       "subject": subject_node}
+        output_dict = {"_id": _id, "association": association, "object": object_node, "subject": subject_node}
 
         yield output_dict
 
 
 def load_drug_dis_data(file_path):
-    """ load data from P1-05-Drug_disease.txt file
+    """load data from P1-05-Drug_disease.txt file
         and clean up the data
 
     Keyword arguments:
@@ -89,7 +84,7 @@ def load_drug_dis_data(file_path):
     drug_name = None
 
     for line in tabfile_feeder(drug_dis_file, header=22):
-        if line != ['', '', '', '', '']:
+        if line != ["", "", "", "", ""]:
             if line[0] == "TTDDRUID":
                 drug_id = line[1]
             elif line[0] == "DRUGNAME":
@@ -101,17 +96,14 @@ def load_drug_dis_data(file_path):
 
                 if drug_id and drug_name:
                     _id = f"{drug_id}_{drug_name}_{icd11}"
-                    dict1 = {"_id": _id,
-                             "status": trial_status,
-                             "disease": disease_name}
+                    dict1 = {"_id": _id, "status": trial_status, "disease": disease_name}
                     drug_dis_list.append(dict1)
                 else:
                     print("Both TTDDRUID and DRUGNAME need to be provided.")
 
     merged_dicts = defaultdict(list)
     for d in drug_dis_list:
-        merged_dicts[d["_id"]].append({"status": d["status"],
-                                       "disease": d["disease"]})
+        merged_dicts[d["_id"]].append({"status": d["status"], "disease": d["disease"]})
 
     output_dict = {}
 
@@ -121,13 +113,9 @@ def load_drug_dis_data(file_path):
         icd11 = _id.split("_")[2]
 
         output_dict["_id"] = f"{drug_id}_treats_{icd11}"
-        output_dict["association"] = {"predicate": "biolink:treats_",
-                                      "clinical_trial": trial_list}
-        output_dict["object"] = {"id": icd11,
-                                 "icd11": icd11}
-        output_dict["subject"] = {"id": drug_id,
-                                  "name": drug_name,
-                                  "type": "biolink:Drug"}
+        output_dict["association"] = {"predicate": "biolink:treats_", "clinical_trial": trial_list}
+        output_dict["object"] = {"id": icd11, "icd11": icd11}
+        output_dict["subject"] = {"id": drug_id, "name": drug_name, "type": "biolink:Drug"}
         disease = output_dict["association"]["clinical_trial"][0]["disease"]
         output_dict["object"]["name"] = disease
         output_dict["object"]["type"] = "biolink:Disease"
@@ -136,7 +124,7 @@ def load_drug_dis_data(file_path):
 
 
 def load_target_dis_data(file_path):
-    """ load data from P1-06-Target_disease.txt file
+    """load data from P1-06-Target_disease.txt file
         and clean up the data
 
     Keyword arguments:
@@ -148,20 +136,19 @@ def load_target_dis_data(file_path):
     subject_node = None
 
     for line in tabfile_feeder(target_dis_file, header=22):
-        if line != ['']:
+        if line != [""]:
             if line[1] == "TARGETID":
-                subject_node = {"id": line[2],
-                                "target_id": line[2],
-                                "name": None,
-                                "type": "biolink:Protein"}
+                subject_node = {"id": line[2], "target_id": line[2], "name": None, "type": "biolink:Protein"}
             elif line[1] == "TARGNAME":
                 subject_node["name"] = line[2]
             elif line[1] == "INDICATI":
                 icd11 = line[3].split(":")[1].split("]")[0].strip()
-                object_node = {"id": icd11,
-                               "icd11": icd11,
-                               "name": line[3].split("[")[0].strip(),
-                               "type": "biolink:Disease"}
+                object_node = {
+                    "id": icd11,
+                    "icd11": icd11,
+                    "name": line[3].split("[")[0].strip(),
+                    "type": "biolink:Disease",
+                }
 
                 if subject_node and object_node:
                     _id = f"{subject_node['id']}_target_for_{object_node['icd11']}"
@@ -176,7 +163,8 @@ def load_target_dis_data(file_path):
                         "_id": _id,
                         "association": association,
                         "object": object_node,
-                        "subject": subject_node}
+                        "subject": subject_node,
+                    }
 
                     yield output_dict
 
@@ -185,7 +173,7 @@ def load_target_dis_data(file_path):
 
 
 def cleanup_icds(dict, icd_key, icd_prefix):
-    """ clean up the icds data for loading biomarker_dis_data
+    """clean up the icds data for loading biomarker_dis_data
 
     Keyword arguments:
     dict: dictionary in biomarker_dis_data
@@ -202,16 +190,17 @@ def cleanup_icds(dict, icd_key, icd_prefix):
 
 
 def load_biomarker_dis_data(file_path):
-    """ load data from P1-08-Biomarker_disease.txt file
+    """load data from P1-08-Biomarker_disease.txt file
 
     Keyword arguments:
     file_path: directory stores P1-08-Biomarker_disease.txt file
     """
     import pandas as pd
+
     biomarker_file = os.path.join(file_path, "P1-08-Biomarker_disease.txt")
     assert os.path.exists(biomarker_file)
 
-    biomarker_list = pd.read_table(biomarker_file, sep="\t", skiprows=15).to_dict(orient='records')
+    biomarker_list = pd.read_table(biomarker_file, sep="\t", skiprows=15).to_dict(orient="records")
 
     subject_node = {}
 
@@ -229,8 +218,7 @@ def load_biomarker_dis_data(file_path):
 
         new_subject_node = {k: v for k, v in subject_node.items() if v is not None}
 
-        object_node = {"id": dicts["BiomarkerID"],
-                       "type": "biolink:Biomarker"}
+        object_node = {"id": dicts["BiomarkerID"], "type": "biolink:Biomarker"}
 
         disease_name = dicts["Diseasename"].replace(" ", "_")
 
@@ -249,25 +237,24 @@ def load_biomarker_dis_data(file_path):
 
         association = {"predicate": "biolink:biomarker_for"}
 
-        output_dict = {"_id": _id,
-                    "association": association,
-                    "object": object_node,
-                    "subject": new_subject_node}
+        output_dict = {"_id": _id, "association": association, "object": object_node, "subject": new_subject_node}
 
         yield output_dict
 
 
 def load_data(file_path):
-    """ main data load function
+    """main data load function
 
     Keyword arguments:
     file_path: directory stores all downloaded data files
     """
     import itertools
-    for doc in itertools.chain(load_drug_target(file_path),
-                               load_drug_dis_data(file_path),
-                               load_target_dis_data(file_path),
-                               load_biomarker_dis_data(file_path)):
+
+    for doc in itertools.chain(
+        load_drug_target(file_path),
+        load_drug_dis_data(file_path),
+        load_target_dis_data(file_path),
+        load_biomarker_dis_data(file_path),
+    ):
 
         yield doc
-
