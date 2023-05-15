@@ -169,8 +169,6 @@ def cleanup_icds(dict, icd_key, icd_prefix):
             return icd
         else:
             return icd
-    else:
-        "na"
 
 
 def load_biomarker_dis_data(file_path):
@@ -182,18 +180,18 @@ def load_biomarker_dis_data(file_path):
 
     for dicts in biomarker_list:
         subject_node["id"] = dicts["ICD11"].split(":")[1].strip()
-
-        icd11 = cleanup_icds(dicts, "ICD11", "ICD-11:")
-        subject_node["icd11"] = icd11
-        icd10 = cleanup_icds(dicts, "ICD10", "ICD-10:")
-        subject_node["icd10"] = icd10
-        icd9 = cleanup_icds(dicts, "ICD9", "ICD-9:")
-        subject_node["icd9"] = icd9
-
         subject_node["name"] = dicts["Diseasename"]
         subject_node["type"] = "biolink:Disease"
-
         biomarker_name = dicts["Biomarker_Name"]
+
+        icd_group = [("ICD11", "ICD-11:"), ("ICD10", "ICD-10:"), ("ICD9", "ICD-9:")]
+
+        for icd_key, icd_prefix in icd_group:
+            icd_value = cleanup_icds(dicts, icd_key, icd_prefix)
+            subject_node[icd_key.lower()] = icd_value
+
+        new_subject_node = {k: v for k, v in subject_node.items() if v is not None}
+
         object_node = {"id": dicts["BiomarkerID"],
                        "type": "biolink:Biomarker"}
 
@@ -214,25 +212,9 @@ def load_biomarker_dis_data(file_path):
 
         association = {"predicate": "biolink:biomarker_for"}
 
-        dat_dict = {"_id": _id,
+        output_dict = {"_id": _id,
                     "association": association,
                     "object": object_node,
-                    "subject": subject_node}
+                    "subject": new_subject_node}
 
-        yield dat_dict
-
-
-
-filepath = "/Users/lucyzhang1116/Documents/biothings_TTD_plugin/Data"
-data_p6 = load_biomarker_dis_data(filepath)
-
-for items in data_p6:
-    if items['object']['id'] == 'BM002998':
-        print(items["subject"])
-        print(items)
-    # print(items)
-"""
-with open("json_outputs/P1-08-biomarker_disease.txt", "w") as file:
-    for items in data_p6:
-        file.write(json.dumps(items, indent=4))
-"""
+        yield output_dict
