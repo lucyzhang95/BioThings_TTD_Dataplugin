@@ -11,7 +11,6 @@ From P1-01-TTD_target_download.txt:
 - 3597 UNIPROID (Uniprot ID)
 - 4080 TARGTYPE (Target Type)
 - 2626 BIOCLASS (BioChemical Class)
-- 2626 BIOCLASS (BioChemical Class)
 
 
 From P1-05-Drug_disease.txt:
@@ -26,6 +25,7 @@ From P1-06-Target_disease.txt:
 - 10428 INDICATI (Clinical Status	Disease Entry [ICD-11])
 
 From P1-07-Drug-TargetMapping.xlsx:
+
 44663 entities
 - TargetID
 - DrugID
@@ -33,6 +33,7 @@ From P1-07-Drug-TargetMapping.xlsx:
 - MOA (mode of activity)
 
 From P1-08-Biomarker_disease.txt:
+
 2512 "^BM.*$"
 - BiomarkerID
 - Biomarker_Name
