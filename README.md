@@ -4,7 +4,7 @@ Version 8.1.01 (2021.11.08)
 
 05/15/23
 
-Matadata files: 5 files
+Metadata files: 5 files
 
 From P1-01-TTD_target_download.txt:
 - 4221 TARGETID (TARGETID	TTD Target ID)
