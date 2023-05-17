@@ -252,7 +252,7 @@ def load_drug_target_act(file_path):
     for line in tabfile_feeder(activity_file, header=1):
         subject_node["id"] = line[2]
         subject_node["pubchem_cid"] = line[2]
-        subject_node["TTD_id"] = line[1]
+        subject_node["ttd_id"] = line[1]
         subject_node["activity"] = line[3].replace(" ", "")
         subject_node["type"] = "biolink:Drug"
 
@@ -266,7 +266,7 @@ def load_drug_target_act(file_path):
                     object_node.update(d)
 
             _id = f"{subject_node['id']}_associated_with_{object_node['id']}"
-            association = "biolink:associated_with"
+            association = {"predicate": "biolink:associated_with"}
             output_dict = {"_id": _id, "association": association, "object": object_node, "subject": subject_node}
 
             yield output_dict
