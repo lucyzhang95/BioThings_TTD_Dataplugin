@@ -172,7 +172,7 @@ def load_target_dis_data(file_path):
                     print("Subject and object need to be provided.")
 
 
-def cleanup_icds(dict, icd_key, icd_prefix):
+def cleanup_icds(line, icd_prefix):
     """clean up the icds data for loading biomarker_dis_data
 
     Keyword arguments:
@@ -180,8 +180,8 @@ def cleanup_icds(dict, icd_key, icd_prefix):
     icd_key: "ICD11", "ICD10", "ICD9"
     icd_prefix:  "ICD-11", "ICD-10", "ICD-9"
     """
-    if dict[icd_key] != "." and dict[icd_key].startswith(icd_prefix):
-        icd = dict[icd_key].split(":")[1].strip()
+    if line != "." and line.startswith(icd_prefix):
+        icd = line.split(":")[1].strip()
         if icd.find(",") != -1:
             icd = [item.strip() for item in icd.split(",")]
             return icd
@@ -195,54 +195,54 @@ def load_biomarker_dis_data(file_path):
     Keyword arguments:
     file_path: directory stores P1-08-Biomarker_disease.txt file
     """
-    import pandas as pd
-
     biomarker_file = os.path.join(file_path, "P1-08-Biomarker_disease.txt")
     assert os.path.exists(biomarker_file)
 
-    biomarker_list = pd.read_table(biomarker_file, sep="\t", skiprows=15).to_dict(orient="records")
+    for line in tabfile_feeder(biomarker_file, header=16):
+        if line:
+            subject_node = {"id": line[3].split(":")[1].strip(), "name": line[2], "type": "biolink:Disease"}
 
-    subject_node = {}
+            biomarker_name = line[1]
 
-    for dicts in biomarker_list:
-        subject_node["id"] = dicts["ICD11"].split(":")[1].strip()
-        subject_node["name"] = dicts["Diseasename"]
-        subject_node["type"] = "biolink:Disease"
-        biomarker_name = dicts["Biomarker_Name"]
+            icd_group = [(line[3], "ICD-11:"), (line[4], "ICD-10:"), (line[5], "ICD-9:")]
 
-        icd_group = [("ICD11", "ICD-11:"), ("ICD10", "ICD-10:"), ("ICD9", "ICD-9:")]
+            for icd_line, icd_prefix in icd_group:
+                icd_value = cleanup_icds(icd_line, icd_prefix)
+                icd_key = icd_line.split(":")[0].replace("-", "").strip().lower()
+                subject_node[icd_key] = icd_value
 
-        for icd_key, icd_prefix in icd_group:
-            icd_value = cleanup_icds(dicts, icd_key, icd_prefix)
-            subject_node[icd_key.lower()] = icd_value
+            new_subject_node = {k: v for k, v in subject_node.items() if v is not None}
 
-        new_subject_node = {k: v for k, v in subject_node.items() if v is not None}
+            object_node = {"id": line[0], "type": "biolink:Biomarker"}
 
-        object_node = {"id": dicts["BiomarkerID"], "type": "biolink:Biomarker"}
+            disease_name = line[2].replace(" ", "_")
 
-        disease_name = dicts["Diseasename"].replace(" ", "_")
+            pattern = re.match(r"(.*?)\((.+)\)\s*$", biomarker_name)
 
-        pattern = re.match(r"(.*?)\((.+)\)\s*$", biomarker_name)
+            if pattern:
+                _id_biomarker = pattern.groups()[1]
+                _id = f"{_id_biomarker}_biomarker_for_{disease_name}"
+                object_node["name"] = pattern.groups()[0]
+                object_node["symbol"] = _id_biomarker
 
-        if pattern:
-            _id_biomarker = pattern.groups()[1]
-            _id = f"{_id_biomarker}_biomarker_for_{disease_name}"
-            object_node["name"] = pattern.groups()[0]
-            object_node["symbol"] = _id_biomarker
+            else:
+                _id_biomarker = biomarker_name.replace(" ", "_")
+                _id = f"{_id_biomarker}_biomarker_for_{disease_name}"
+                object_node["name"] = _id_biomarker
 
-        else:
-            _id_biomarker = biomarker_name.replace(" ", "_")
-            _id = f"{_id_biomarker}_biomarker_for_{disease_name}"
-            object_node["name"] = _id_biomarker
+            association = {"predicate": "biolink:biomarker_for"}
 
-        association = {"predicate": "biolink:biomarker_for"}
+            output_dict = {"_id": _id, "association": association, "object": object_node, "subject": new_subject_node}
 
-        output_dict = {"_id": _id, "association": association, "object": object_node, "subject": new_subject_node}
-
-        yield output_dict
+            yield output_dict
 
 
 def load_drug_target_act(file_path):
+    """load data from P1-09-Target_compound_activity.txt file
+
+    Keyword arguments:
+    file_path: directory stores P1-09-Target_compound_activity.txt file
+    """
     activity_file = os.path.join(file_path, "P1-09-Target_compound_activity.txt")
     assert os.path.exists(activity_file)
 
@@ -267,10 +267,7 @@ def load_drug_target_act(file_path):
 
             _id = f"{subject_node['id']}_associated_with_{object_node['id']}"
             association = "biolink:associated_with"
-            output_dict = {"_id": _id,
-                           "association": association,
-                           "object": object_node,
-                           "subject": subject_node}
+            output_dict = {"_id": _id, "association": association, "object": object_node, "subject": subject_node}
 
             yield output_dict
 
@@ -291,7 +288,7 @@ def load_data(file_path):
         load_drug_dis_data(file_path),
         load_target_dis_data(file_path),
         load_biomarker_dis_data(file_path),
-        load_drug_target_act(file_path)
+        load_drug_target_act(file_path),
     ):
 
         yield doc
