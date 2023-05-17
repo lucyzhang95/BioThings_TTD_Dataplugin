@@ -45,7 +45,7 @@ def load_drug_target(file_path):
     drug_targ_file = os.path.join(file_path, "P1-07-Drug-TargetMapping.xlsx")
     assert os.path.exists(drug_targ_file)
 
-    drug_target_data = pd.read_excel(drug_targ_file).to_dict(orient="records")
+    drug_target_data = pd.read_excel(drug_targ_file, engine='openpyxl').to_dict(orient="records")
 
     for dicts in drug_target_data:
         target_info = get_target_info(file_path)
