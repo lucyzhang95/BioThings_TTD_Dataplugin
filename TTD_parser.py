@@ -242,6 +242,42 @@ def load_biomarker_dis_data(file_path):
         yield output_dict
 
 
+def load_drug_target_act(file_path):
+    activity_file = os.path.join(file_path, "P1-09-Target_compound_activity.txt")
+    assert os.path.exists(activity_file)
+
+    subject_node = {}
+    object_node = {}
+
+    for line in tabfile_feeder(activity_file, header=1):
+        subject_node["id"] = line[2]
+        subject_node["pubchem_cid"] = line[2]
+        subject_node["TTD_id"] = line[1]
+        subject_node["activity"] = line[3].replace(" ", "")
+        subject_node["type"] = "biolink:Drug"
+
+        object_node["id"] = line[0]
+        object_node["type"] = "biolink:Protein"
+
+        if subject_node and object_node:
+            target_info = get_target_info(file_path)
+            for d in target_info:
+                if d["target_id"] == object_node["id"]:
+                    object_node.update(d)
+
+            _id = f"{subject_node['id']}_associated_with_{object_node['id']}"
+            association = "biolink:associated_with"
+            output_dict = {"_id": _id,
+                           "association": association,
+                           "object": object_node,
+                           "subject": subject_node}
+
+            yield output_dict
+
+        else:
+            print("Subject and Object need to be provided.")
+
+
 def load_data(file_path):
     """main data load function
 
@@ -255,6 +291,7 @@ def load_data(file_path):
         load_drug_dis_data(file_path),
         load_target_dis_data(file_path),
         load_biomarker_dis_data(file_path),
+        load_drug_target_act(file_path)
     ):
 
         yield doc
