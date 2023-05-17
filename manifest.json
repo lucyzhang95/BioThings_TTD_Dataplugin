@@ -9,7 +9,8 @@
       "https://db.idrblab.net/ttd/sites/default/files/ttd_database/P1-05-Drug_disease.txt",
       "https://db.idrblab.net/ttd/sites/default/files/ttd_database/P1-06-Target_disease.txt",
       "https://db.idrblab.net/ttd/sites/default/files/ttd_database/P1-07-Drug-TargetMapping.xlsx",
-      "https://db.idrblab.net/ttd/sites/default/files/ttd_database/P1-08-Biomarker_disease.txt"
+      "https://db.idrblab.net/ttd/sites/default/files/ttd_database/P1-08-Biomarker_disease.txt",
+      "https://db.idrblab.net/ttd/sites/default/files/ttd_database/P1-09-Target_compound_activity.txt"
     ],
     "uncompress": true
   },
