@@ -113,7 +113,7 @@ def load_drug_dis_data(file_path):
         icd11 = _id.split("_")[2]
 
         output_dict["_id"] = f"{drug_id}_treats_{icd11}"
-        output_dict["association"] = {"predicate": "biolink:treats_", "clinical_trial": trial_list}
+        output_dict["association"] = {"predicate": "biolink:treats", "clinical_trial": trial_list}
         output_dict["object"] = {"id": icd11, "icd11": icd11}
         output_dict["subject"] = {"id": drug_id, "name": drug_name, "type": "biolink:Drug"}
         disease = output_dict["association"]["clinical_trial"][0]["disease"]
@@ -253,7 +253,6 @@ def load_drug_target_act(file_path):
         subject_node["id"] = line[2]
         subject_node["pubchem_cid"] = line[2]
         subject_node["ttd_id"] = line[1]
-        subject_node["activity"] = line[3].replace(" ", "")
         subject_node["type"] = "biolink:Drug"
 
         object_node["id"] = line[0]
@@ -267,6 +266,13 @@ def load_drug_target_act(file_path):
 
             _id = f"{subject_node['id']}_associated_with_{object_node['id']}"
             association = {"predicate": "biolink:associated_with"}
+
+            pattern = re.match(r"(IC50|Ki|EC50)\s+(.+)", line[3])
+            if pattern:
+                association[pattern.groups()[0]] = pattern.groups()[1].replace(" ", "")
+            else:
+                print(f"{line[3]} pattern does not match.")
+
             output_dict = {"_id": _id, "association": association, "object": object_node, "subject": subject_node}
 
             yield output_dict
