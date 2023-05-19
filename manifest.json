@@ -1,5 +1,5 @@
 {
-  "version": "8.1.01",
+  "version": "0.3",
   "display_name": "Therapeutic Target Database",
   "biothing_type": "association",
   "requires": ["pandas", "openpyxl"],
@@ -12,10 +12,11 @@
       "https://db.idrblab.net/ttd/sites/default/files/ttd_database/P1-08-Biomarker_disease.txt",
       "https://db.idrblab.net/ttd/sites/default/files/ttd_database/P1-09-Target_compound_activity.txt"
     ],
-    "uncompress": true
+    "uncompress": true,
+    "release": "version:get_release"
   },
   "uploader": {
     "parser": "TTD_parser:load_data",
-    "on_duplicates": "error"
+    "on_duplicates": "ignore"
   }
 }
