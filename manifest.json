@@ -17,6 +17,6 @@
   },
   "uploader": {
     "parser": "TTD_parser:load_data",
-    "on_duplicates": "ignore"
+    "on_duplicates": "error"
   }
 }
