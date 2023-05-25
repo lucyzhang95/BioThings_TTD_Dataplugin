@@ -365,5 +365,4 @@ def load_data(file_path):
         load_biomarker_dis_data(file_path),
         load_drug_target_act(file_path),
     ):
-
         yield doc
