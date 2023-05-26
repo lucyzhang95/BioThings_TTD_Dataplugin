@@ -114,6 +114,8 @@ def load_drug_dis_data(file_path):
                     print("Both TTDDRUID and DRUGNAME need to be provided.")
 
     merged_dicts = defaultdict(list)
+
+    # Merge the dict1 status and disease values with the same _id key
     for d in drug_dis_list:
         merged_dicts[d["_id"]].append({"status": d["status"], "disease": d["disease"]})
 
