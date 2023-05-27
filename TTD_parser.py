@@ -337,7 +337,7 @@ def load_drug_target_act(file_path):
 
             pattern = re.match(r"(IC50|Ki|EC50)\s+(.+)", line[3])
             if pattern:
-                association[pattern.groups()[0]] = pattern.groups()[1].replace(" ", "")
+                association[pattern.groups()[0].lower()] = pattern.groups()[1].replace(" ", "")
             else:
                 print(f"{line[3]} pattern does not match.")
 
