@@ -119,29 +119,32 @@ def load_drug_dis_data(file_path):
     for d in drug_dis_list:
         merged_dicts[d["_id"]].append({"status": d["status"], "disease": d["disease"]})
 
-    output_dict = {}
-
     for _id, trial_list in merged_dicts.items():
         drug_id = _id.split("_")[0]
         drug_name = _id.split("_")[1]
         icd11 = _id.split("_")[2]
 
-        output_dict["_id"] = f"{drug_id}_treats_{icd11}"
-        output_dict["association"] = {
-            "predicate": "biolink:treats",
-            "clinical_trial": trial_list,
-        }
-        output_dict["object"] = {"id": icd11, "icd11": icd11}
-        output_dict["subject"] = {
-            "id": drug_id,
-            "name": drug_name,
-            "type": "biolink:Drug",
-        }
-        disease = output_dict["association"]["clinical_trial"][0]["disease"]
-        output_dict["object"]["name"] = disease
-        output_dict["object"]["type"] = "biolink:Disease"
+        association = {"predicate": "biolink:treats", "clinical_trial": trial_list}
 
-        yield output_dict
+        object_node = {
+            "id": icd11,
+            "icd11": icd11,
+            "name": association["clinical_trial"][0]["disease"],
+            "type": "biolink:Disease",
+        }
+
+        subject_node = {"id": drug_id, "name": drug_name, "type": "biolink:Drug"}
+
+        if object_node and subject_node:
+            output_dict = {
+                "_id": f"{drug_id}_treats_{icd11}",
+                "association": association,
+                "object": object_node,
+                "subject": subject_node,
+            }
+            yield output_dict
+        else:
+            print("Subject and Object need to be provided.")
 
 
 def load_target_dis_data(file_path):
@@ -219,7 +222,6 @@ def load_target_dis_data(file_path):
                 "object": object_node,
                 "subject": subject_node,
             }
-
             yield output_dict
         else:
             print("Subject and object need to be provided.")
@@ -358,9 +360,10 @@ def load_data(file_path):
     Keyword arguments:
     file_path: directory stores all downloaded data files
     """
-    import itertools
 
-    for doc in itertools.chain(
+    from itertools import chain
+
+    for doc in chain(
         load_drug_target(file_path),
         load_drug_dis_data(file_path),
         load_target_dis_data(file_path),
