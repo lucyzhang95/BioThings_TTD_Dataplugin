@@ -2,18 +2,22 @@
 Data source: https://db.idrblab.net/ttd/full-data-download
 Version 8.1.01 (2021.11.08)
 
-05/15/23
-
-Metadata files: 5 files
-
-From P1-01-TTD_target_download.txt:
-- 4221 TARGETID (TARGETID	TTD Target ID)
-- 3597 UNIPROID (Uniprot ID)
-- 4080 TARGTYPE (Target Type)
-- 2626 BIOCLASS (BioChemical Class)
-
+P1-01-TTD_target_download.txt
+| Entity | Count |
+| --- | --- |
+| TARGETID | 4221 |
+| UNIPROID  | 3597 |
+| TARGTYPE | 4080 |
+| BIOCLASS | 2626 |
 
 From P1-05-Drug_disease.txt:
+| Entity | Count |
+| --- | --- |
+| TARGETID | 4221 |
+| UNIPROID  | 3597 |
+| TARGTYPE | 4080 |
+| BIOCLASS | 2626 |
+
 - 28978 INDICATI (Indication	Disease entry	ICD-11	Clinical status)
 - 22597 TTDDRUID (TTD Drug ID)
 - 22597 DRUGNAME (Drug Name)
@@ -41,3 +45,5 @@ From P1-08-Biomarker_disease.txt:
 - ICD11
 - ICD10
 - ICD9
+
+
