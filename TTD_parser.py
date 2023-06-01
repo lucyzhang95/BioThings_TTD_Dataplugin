@@ -92,6 +92,7 @@ def load_drug_dis_data(file_path):
     drug_name = None
 
     for line in tabfile_feeder(drug_dis_file, header=22):
+        # data file has empty spaces
         if line != ["", "", "", "", ""]:
             if line[0] == "TTDDRUID":
                 drug_id = line[1]
@@ -135,16 +136,13 @@ def load_drug_dis_data(file_path):
 
         subject_node = {"id": drug_id, "name": drug_name, "type": "biolink:Drug"}
 
-        if object_node and subject_node:
-            output_dict = {
-                "_id": f"{drug_id}_treats_{icd11}",
-                "association": association,
-                "object": object_node,
-                "subject": subject_node,
-            }
-            yield output_dict
-        else:
-            print("Subject and Object need to be provided.")
+        output_dict = {
+            "_id": f"{drug_id}_treats_{icd11}",
+            "association": association,
+            "object": object_node,
+            "subject": subject_node,
+        }
+        yield output_dict
 
 
 def load_target_dis_data(file_path):
@@ -215,16 +213,13 @@ def load_target_dis_data(file_path):
         if subject_node["id"] in target_info_d:
             subject_node.update(target_info_d[subject_node["id"]])
 
-        if subject_node and object_node:
-            output_dict = {
-                "_id": _id,
-                "association": association,
-                "object": object_node,
-                "subject": subject_node,
-            }
-            yield output_dict
-        else:
-            print("Subject and object need to be provided.")
+        output_dict = {
+            "_id": _id,
+            "association": association,
+            "object": object_node,
+            "subject": subject_node,
+        }
+        yield output_dict
 
 
 def cleanup_icds(line, icd_prefix):
