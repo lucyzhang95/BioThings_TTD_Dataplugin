@@ -1,6 +1,10 @@
 {
   "version": "0.3",
-  "display_name": "Therapeutic Target Database",
+  "__metadata__": {
+    "url": "https://db.idrblab.net/ttd/",
+    "description": "Therapeutic Target Database"
+  },
+  "display_name": "TTD",
   "biothing_type": "association",
   "requires": ["pandas", "openpyxl"],
   "dumper": {
@@ -12,7 +16,6 @@
       "https://db.idrblab.net/ttd/sites/default/files/ttd_database/P1-08-Biomarker_disease.txt",
       "https://db.idrblab.net/ttd/sites/default/files/ttd_database/P1-09-Target_compound_activity.txt"
     ],
-    "uncompress": true,
     "release": "version:get_release"
   },
   "uploader": {
