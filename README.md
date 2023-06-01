@@ -2,42 +2,57 @@
 Data source: https://db.idrblab.net/ttd/full-data-download
 Version 8.1.01 (2021.11.08)
 
-05/15/23
+05/31/23
 
-Metadata files: 5 files
-
-From P1-01-TTD_target_download.txt:
-- 4221 TARGETID (TARGETID	TTD Target ID)
-- 3597 UNIPROID (Uniprot ID)
-- 4080 TARGTYPE (Target Type)
-- 2626 BIOCLASS (BioChemical Class)
-
-
-From P1-05-Drug_disease.txt:
-- 28978 INDICATI (Indication	Disease entry	ICD-11	Clinical status)
-- 22597 TTDDRUID (TTD Drug ID)
-- 22597 DRUGNAME (Drug Name)
+## P1-01-TTD_target_download.txt
+| Entity | Count |
+| --- | --- |
+| TARGETID | 4221 |
+| UNIPROID  | 3597 |
+| TARGTYPE | 4080 |
+| BIOCLASS | 2626 |
 
 
-From P1-06-Target_disease.txt:
-- 2373 TARGETID (TTD Target ID)
-- 2373 TARGNAME (Target Name)
-- 10428 INDICATI (Clinical Status	Disease Entry [ICD-11])
+## P1-05-Drug_disease.txt
+| Entity | Count |
+| --- | --- |
+| TTDDRUID | 22597 |
+| DRUGNAME  | 22597 |
+| INDICATI | 28978 |
+| Parser id | 28685 |
 
-From P1-07-Drug-TargetMapping.xlsx:
+- Parser merged TTDDRUGID with the same INDICATI ICD11
+- 293 duplicated TTDDRUGID + INDICATI ICD11: 28978 - 28685 = 293
 
-44663 entities
-- TargetID
-- DrugID
-- Highest_status
-- MOA (mode of activity)
 
-From P1-08-Biomarker_disease.txt:
+## P1-06-Target_disease.txt
+| Entity | Count |
+| --- | --- |
+| TARGETID | 2373 |
+| TARGNAME  | 2373 |
+| INDICATI | 10428 |
+| Parser id | 10411 |
 
-2512 "^BM.*$"
-- BiomarkerID
-- Biomarker_Name
-- Diseasename
-- ICD11
-- ICD10
-- ICD9
+- Parser merged TARGETID with the same INDICATI ICD11
+- 17 duplicated TARGETID + INDICATI ICD11: 10428 - 10411 = 17
+
+
+## P1-07-Drug-TargetMapping.xlsx
+| Entity | Count |
+| --- | --- |
+| All | 44663 |
+| Parser id  | 44663 |
+
+
+## P1-08-Biomarker_disease.txt
+| Entity | Count |
+| --- | --- |
+| All | 2512 |
+| Parser id  | 2512 |
+
+
+## P1-09-Target_compound_activity.txt
+| Entity | Count |
+| --- | --- |
+| All | 803580 |
+| Parser id  | 803580 |
