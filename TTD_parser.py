@@ -22,7 +22,11 @@ def get_target_info(file_path):
             if line[1].startswith("TARGETID"):
                 target_info = {"target_id": line[2]}
             elif "UNIPROID" in line[1]:
-                target_info["uniprot"] = line[2]
+                if ";" in line[2]:
+                    uniprot = [item.strip() for item in line[2].split(";")]
+                    target_info["uniprot"] = uniprot
+                else:
+                    target_info["uniprot"] = line[2]
             elif "TARGTYPE" in line[1]:
                 target_info["target_type"] = line[2].lower()
             elif "BIOCLASS" in line[1]:
@@ -256,8 +260,6 @@ def load_biomarker_dis_data(file_path):
                 "type": "biolink:Disease",
             }
 
-            biomarker_name = line[1]
-
             icd_group = [
                 (line[3], "ICD-11:"),
                 (line[4], "ICD-10:"),
@@ -275,17 +277,20 @@ def load_biomarker_dis_data(file_path):
 
             disease_name = line[2].replace(" ", "_")
 
+            biomarker_name = line[1]
             pattern = re.match(r"(.*?)\((.+)\)\s*$", biomarker_name)
+
+
 
             if pattern:
                 _id_biomarker = pattern.groups()[1]
-                _id = f"{line[0]}_{_id_biomarker}_biomarker_for_{disease_name}"
+                _id = f"{line[0]}_biomarker_for_{disease_name}"
                 object_node["name"] = pattern.groups()[0]
                 object_node["symbol"] = _id_biomarker
 
             else:
                 _id_biomarker = biomarker_name.replace(" ", "_")
-                _id = f"{line[0]}_{_id_biomarker}_biomarker_for_{disease_name}"
+                _id = f"{line[0]}_biomarker_for_{disease_name}"
                 object_node["name"] = _id_biomarker
 
             association = {"predicate": "biolink:biomarker_for"}
