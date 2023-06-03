@@ -291,7 +291,7 @@ def load_biomarker_dis_data(file_path):
                     object_node["name"] = biomarker_name.replace(" ", "_")
             else:
                 biomarkers = [item.strip() for item in biomarker_name.split(",")]
-                object_node = {"name": []}
+                object_node["name"] = []
                 symbol = []
                 for biomarker in biomarkers:
                     match2 = re.match(pattern, biomarker)
