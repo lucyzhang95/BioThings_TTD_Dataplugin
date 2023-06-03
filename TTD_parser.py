@@ -278,20 +278,29 @@ def load_biomarker_dis_data(file_path):
             disease_name = line[2].replace(" ", "_")
 
             biomarker_name = line[1]
-            pattern = re.match(r"(.*?)\((.+)\)\s*$", biomarker_name)
+            _id = f"{line[0]}_biomarker_for_{disease_name}"
 
-
-
-            if pattern:
-                _id_biomarker = pattern.groups()[1]
-                _id = f"{line[0]}_biomarker_for_{disease_name}"
-                object_node["name"] = pattern.groups()[0]
-                object_node["symbol"] = _id_biomarker
-
+            pattern = r"(.*?)\((.+)\)\s*$"
+            if "," not in biomarker_name:
+                match1 = re.match(pattern, biomarker_name)
+                if match1:
+                    symbol = match1.groups()[1]
+                    object_node["name"] = match1.groups()[0]
+                    object_node["symbol"] = symbol
+                else:
+                    object_node["name"] = biomarker_name.replace(" ", "_")
             else:
-                _id_biomarker = biomarker_name.replace(" ", "_")
-                _id = f"{line[0]}_biomarker_for_{disease_name}"
-                object_node["name"] = _id_biomarker
+                biomarkers = [item.strip() for item in biomarker_name.split(",")]
+                object_node = {"name": []}
+                symbol = []
+                for biomarker in biomarkers:
+                    match2 = re.match(pattern, biomarker)
+                    if match2:
+                        symbol.append(match2.groups()[1])
+                        object_node["symbol"] = symbol
+                        object_node["name"].append(match2.groups()[0].strip())
+                    else:
+                        object_node["name"].append(biomarker)
 
             association = {"predicate": "biolink:biomarker_for"}
 
