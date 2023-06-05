@@ -280,52 +280,25 @@ def load_biomarker_dis_data(file_path):
             biomarker_name = line[1]
             _id = f"{line[0]}_biomarker_for_{disease_name}"
 
-            pattern1 = r"^(.*\(.*?)\s+\((.*)\)$"
-            pattern2 = r"(.*?)\((.+)\)\s*$"
+            pattern = r"^(.*\(.*?)(.*)\)$"
             if "," not in biomarker_name:
-                match1 = re.match(pattern1, biomarker_name)
-                match2 = re.match(pattern2, biomarker_name)
-                if match1:
-                    symbol = match1.groups()[1]
-                    object_node["name"] = match1.groups()[0]
-                    object_node["symbol"] = symbol
-                elif match2:
-                    symbol = match2.groups()[1]
-                    object_node["name"] = match2.groups()[0]
+                match = re.match(pattern, biomarker_name)
+                if match:
+                    symbol = match.groups()[1]
+                    object_node["name"] = match.groups()[0].rstrip("(").strip()
                     object_node["symbol"] = symbol
                 else:
                     object_node["name"] = biomarker_name.replace(" ", "_")
-            elif ";" in biomarker_name:
-                biomarkers = [item.strip() for item in biomarker_name.split(";")]
-                object_node["name"] = []
-                symbol = []
-                for biomarker in biomarkers:
-                    match1 = re.match(pattern1, biomarker)
-                    if match1:
-                        symbol.append(match1.groups()[1])
-                        object_node["symbol"] = symbol
-                        object_node["name"].append(match1.groups()[0].strip())
-                    elif match2:
-                        symbol.append(match2.groups()[1])
-                        object_node["symbol"] = symbol
-                        object_node["name"].append(match2.groups()[0].strip())
-                    else:
-                        object_node["name"].append(biomarker)
             else:
                 biomarkers = [item.strip() for item in biomarker_name.split(",")]
                 object_node["name"] = []
                 symbol = []
                 for biomarker in biomarkers:
-                    match1 = re.match(pattern1, biomarker)
-                    if match1:
-                        symbol.append(match1.groups()[1])
+                    match = re.match(pattern, biomarker)
+                    if match:
+                        symbol.append(match.groups()[1])
                         object_node["symbol"] = symbol
-                        object_node["name"].append(match1.groups()[0].strip())
-                    elif match2:
-                        symbol.append(match2.groups()[1])
-                        object_node["symbol"] = symbol
-                        object_node["name"].append(match2.groups()[0].strip())
-
+                        object_node["name"].append(match.groups()[0].rstrip("(").strip())
                     else:
                         object_node["name"].append(biomarker)
 
