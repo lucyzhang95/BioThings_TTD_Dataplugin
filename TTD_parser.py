@@ -296,7 +296,7 @@ def load_biomarker_dis_data(file_path):
                 for biomarker in biomarkers:
                     match = re.match(pattern, biomarker)
                     if match:
-                        symbol.append(match.groups()[1])
+                        symbol.append(match.groups()[1].strip())
                         object_node["symbol"] = symbol
                         object_node["name"].append(match.groups()[0].rstrip("(").strip())
                     else:
