@@ -58,17 +58,16 @@ def load_drug_target(file_path):
 
         subject_node = {
             "id": dicts["DrugID"],
-            "trial_status": dicts["Highest_status"].lower(),
             "type": "biolink:Drug",
         }
-        if drug_moa != ".":
-            subject_node["moa"] = drug_moa.lower()
 
         if object_node["id"] in target_info_d:
             object_node.update(target_info_d[object_node["id"]])
 
         _id = f"{subject_node['id']}_associated_with_{object_node['id']}"
-        association = {"predicate": "biolink:associated_with"}
+        association = {"predicate": "biolink:associated_with", "trial_status": dicts["Highest_status"].lower()}
+        if drug_moa != ".":
+            association["moa"] = drug_moa.lower()
 
         output_dict = {
             "_id": _id,
@@ -280,11 +279,11 @@ def load_biomarker_dis_data(file_path):
             biomarker_name = line[1]
             _id = f"{line[0]}_biomarker_for_{disease_name}"
 
-            pattern = r"^(.*\(.*?)(.*)\)$"
+            pattern = r"^(.*\(.*?)(.*)$"
             if "," not in biomarker_name:
                 match = re.match(pattern, biomarker_name)
                 if match:
-                    symbol = match.groups()[1]
+                    symbol = match.groups()[1].rstrip(")")
                     object_node["name"] = match.groups()[0].rstrip("(").strip()
                     object_node["symbol"] = symbol
                 else:
@@ -296,7 +295,7 @@ def load_biomarker_dis_data(file_path):
                 for biomarker in biomarkers:
                     match = re.match(pattern, biomarker)
                     if match:
-                        symbol.append(match.groups()[1].strip())
+                        symbol.append(match.groups()[1].rstrip(")").strip())
                         object_node["symbol"] = symbol
                         object_node["name"].append(match.groups()[0].rstrip("(").strip())
                     else:
