@@ -1,5 +1,6 @@
 import os.path
 import re
+import gzip
 from collections import defaultdict
 
 from biothings.utils.dataload import tabfile_feeder
@@ -34,6 +35,17 @@ def get_target_info(file_path):
         else:
             if target_info:
                 yield target_info
+
+
+def uniprotAC_KB_mapping(file_path):
+    mapping_file = os.path.join(file_path, "HUMAN_9606_idmapping.dat.gz")
+    assert os.path.exists(mapping_file)
+
+    with gzip.open(file_path, "rb") as file:
+        for line in file:
+            line = line.decode("utf8").strip().split("\t")
+            mapping_dict = {line[2]: line[0]}
+            yield mapping_dict
 
 
 def load_drug_target(file_path):
