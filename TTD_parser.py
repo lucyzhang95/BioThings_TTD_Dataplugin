@@ -1,13 +1,66 @@
 import os.path
 import re
-import gzip
+import time
 from collections import defaultdict
+import requests
+from requests.adapters import HTTPAdapter, Retry
 
 from biothings.utils.dataload import tabfile_feeder
 from biothings.utils.dataload import open_anyfile
 
+POLLING_INTERVAL = 3
+API_URL = "https://rest.uniprot.org"
 
-def uniprot_ac_kb_mapping(file_path):
+retries = Retry(total=5, backoff_factor=0.25, status_forcelist=[500, 502, 503, 504])
+session = requests.Session()
+session.mount("https://", HTTPAdapter(max_retries=retries))
+headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'}
+
+
+def check_response(response):
+    try:
+        response.raise_for_status()
+    except requests.HTTPError:
+        print(response.json())
+        raise
+
+
+def submit_id_mapping(from_db, to_db, ids):
+    request = requests.post(
+        f"{API_URL}/idmapping/run",
+        data={"from": from_db, "to": to_db, "ids": ids},
+    )
+    check_response(request)
+    return request.json()["jobId"]
+
+
+def get_id_mapping_results_link(job_id):
+    url = f"{API_URL}/idmapping/uniprotkb/results/{job_id}"
+    return url
+
+
+def check_id_mapping_results_ready(job_id):
+    while True:
+        request = session.get(f"{API_URL}/idmapping/status/{job_id}")
+        check_response(request)
+        j = request.json()
+        if "jobStatus" in j:
+            if j["jobStatus"] == "RUNNING":
+                print(f"Retrying in {POLLING_INTERVAL}s")
+                time.sleep(POLLING_INTERVAL)
+            else:
+                raise Exception(j["jobStatus"])
+        else:
+            return bool(j["results"] or j["failedIds"])
+
+
+def get_uniprot_kb_results(url):
+    request = session.get(url, headers=headers)
+    if request.json()["results"][0]["to"]["primaryAccession"]:
+        return request.json()["results"][0]["to"]["primaryAccession"]
+
+
+def get_human_uniprot_info(file_path):
     mapping_file = os.path.join(file_path, "HUMAN_9606_idmapping.dat.gz")
     assert os.path.exists(mapping_file)
 
@@ -29,7 +82,8 @@ def get_target_info(file_path):
     assert os.path.exists(target_info_file)
 
     target_info = None
-    uniprot_map = {d["uniprot_ac"]: d for d in uniprot_ac_kb_mapping(file_path)}
+    uniprot_map = {d["uniprot_ac"]: d for d in get_human_uniprot_info(file_path)}
+    request_ac = {}
 
     for line in tabfile_feeder(target_info_file, header=40):
         if line != ["", "", "", "", ""]:
@@ -39,10 +93,26 @@ def get_target_info(file_path):
                 if ";" in line[2]:
                     uniprot_ac = [item.strip() for item in line[2].split(";")]
                     uniprot_kb = [uniprot_map[item]["uniprot_kb"] for item in uniprot_ac if item in uniprot_map]
-                    target_info["uniprot"] = uniprot_kb
+                    if uniprot_kb:
+                        target_info["uniprot"] = uniprot_kb
+                    else:
+                        for ac in uniprot_ac:
+                            print(ac)
+                            job_id = submit_id_mapping(from_db="UniProtKB_AC-ID", to_db="UniProtKB", ids=ac)
+                            print(job_id)
+                            if check_id_mapping_results_ready(job_id):
+                                results = get_id_mapping_results_link(job_id)
+                                print(results)
+                                kb = get_uniprot_kb_results(results)
+                                print(kb)
+                                if results:
+                                    target_info["uniprot"] = kb
                 else:
                     if line[2] in uniprot_map:
                         target_info["uniprot"] = uniprot_map[line[2]]["uniprot_kb"]
+                    else:
+                        s_ac = {target_info["ttd_target_id"]: line[2]}
+                        request_ac.update(s_ac)
             elif "TARGTYPE" in line[1]:
                 target_info["target_type"] = line[2].lower()
             elif "BIOCLASS" in line[1]:
@@ -68,7 +138,7 @@ def load_drug_target(file_path):
 
     target_info_d = {d["ttd_target_id"]: d for d in get_target_info(file_path)}
 
-    uniport_info_d = {d["uniport_AC"]: d for d in uniprot_ac_kb_mapping(file_path)}
+    uniport_info_d = {d["uniport_AC"]: d for d in get_human_uniprot_info(file_path)}
 
     for dicts in drug_target_data:
         object_node = {"id": None, "ttd_id": dicts["TargetID"], "type": "biolink:Protein"}
