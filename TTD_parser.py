@@ -4,6 +4,18 @@ import gzip
 from collections import defaultdict
 
 from biothings.utils.dataload import tabfile_feeder
+from biothings.utils.dataload import open_anyfile
+
+
+def uniprot_ac_kb_mapping(file_path):
+    mapping_file = os.path.join(file_path, "HUMAN_9606_idmapping.dat.gz")
+    assert os.path.exists(mapping_file)
+
+    with open_anyfile(mapping_file) as file:
+        for line in file:
+            line = line.strip().split("\t")
+            uniprot_dict = {"uniprot_kb": line[0], "uniprot_ac": line[2]}
+            yield uniprot_dict
 
 
 def get_target_info(file_path):
@@ -17,17 +29,20 @@ def get_target_info(file_path):
     assert os.path.exists(target_info_file)
 
     target_info = None
+    uniprot_map = {d["uniprot_ac"]: d for d in uniprot_ac_kb_mapping(file_path)}
 
     for line in tabfile_feeder(target_info_file, header=40):
         if line != ["", "", "", "", ""]:
             if line[1].startswith("TARGETID"):
-                target_info = {"target_id": line[2]}
+                target_info = {"ttd_target_id": line[2]}
             elif "UNIPROID" in line[1]:
                 if ";" in line[2]:
-                    uniprot = [item.strip() for item in line[2].split(";")]
-                    target_info["uniprot"] = uniprot
+                    uniprot_ac = [item.strip() for item in line[2].split(";")]
+                    uniprot_kb = [uniprot_map[item]["uniprot_kb"] for item in uniprot_ac if item in uniprot_map]
+                    target_info["uniprot"] = uniprot_kb
                 else:
-                    target_info["uniprot"] = line[2]
+                    if line[2] in uniprot_map:
+                        target_info["uniprot"] = uniprot_map[line[2]]["uniprot_kb"]
             elif "TARGTYPE" in line[1]:
                 target_info["target_type"] = line[2].lower()
             elif "BIOCLASS" in line[1]:
@@ -35,17 +50,6 @@ def get_target_info(file_path):
         else:
             if target_info:
                 yield target_info
-
-
-def uniprotAC_KB_mapping(file_path):
-    mapping_file = os.path.join(file_path, "HUMAN_9606_idmapping.dat.gz")
-    assert os.path.exists(mapping_file)
-
-    with gzip.open(file_path, "rb") as file:
-        for line in file:
-            line = line.decode("utf8").strip().split("\t")
-            mapping_dict = {line[2]: line[0]}
-            yield mapping_dict
 
 
 def load_drug_target(file_path):
@@ -62,10 +66,12 @@ def load_drug_target(file_path):
 
     drug_target_data = pd.read_excel(drug_targ_file, engine="openpyxl").to_dict(orient="records")
 
-    target_info_d = {d["target_id"]: d for d in get_target_info(file_path)}
+    target_info_d = {d["ttd_target_id"]: d for d in get_target_info(file_path)}
+
+    uniport_info_d = {d["uniport_AC"]: d for d in uniprot_ac_kb_mapping(file_path)}
 
     for dicts in drug_target_data:
-        object_node = {"id": dicts["TargetID"], "type": "biolink:Protein"}
+        object_node = {"id": None, "ttd_id": dicts["TargetID"], "type": "biolink:Protein"}
         drug_moa = dicts["MOA"]
 
         subject_node = {
@@ -73,8 +79,11 @@ def load_drug_target(file_path):
             "type": "biolink:Drug",
         }
 
-        if object_node["id"] in target_info_d:
-            object_node.update(target_info_d[object_node["id"]])
+        if object_node["ttd_id"] in target_info_d:
+            object_node.update(target_info_d[object_node["ttd_id"]])
+
+        if object_node["uniprot"] in uniport_info_d:
+            object_node.update(uniport_info_d[object_node["uniprot"]])
 
         _id = f"{subject_node['id']}_associated_with_{object_node['id']}"
         association = {"predicate": "biolink:associated_with", "trial_status": dicts["Highest_status"].lower()}
