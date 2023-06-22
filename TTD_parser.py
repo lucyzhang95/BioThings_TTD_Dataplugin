@@ -1,74 +1,134 @@
 import os.path
 import re
-import time
+import aiohttp
+import aiohttp.client_exceptions
+import asyncio
 from collections import defaultdict
-import requests
-from requests.adapters import HTTPAdapter, Retry
 
 from biothings.utils.dataload import tabfile_feeder
-from biothings.utils.dataload import open_anyfile
-
-POLLING_INTERVAL = 3
-API_URL = "https://rest.uniprot.org"
-
-retries = Retry(total=5, backoff_factor=0.25, status_forcelist=[500, 502, 503, 504])
-session = requests.Session()
-session.mount("https://", HTTPAdapter(max_retries=retries))
-headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'}
 
 
-def check_response(response):
-    try:
-        response.raise_for_status()
-    except requests.HTTPError:
-        print(response.json())
-        raise
+class UniprotJobIDs:
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.job_ids = []
+        self.api_url = "https://rest.uniprot.org"
 
+    def get_uniprot_ac(self):
+        uniprot_info_file = os.path.join(self.file_path, "P1-01-TTD_target_download.txt")
+        assert os.path.exists(uniprot_info_file)
 
-def submit_id_mapping(from_db, to_db, ids):
-    request = requests.post(
-        f"{API_URL}/idmapping/run",
-        data={"from": from_db, "to": to_db, "ids": ids},
-    )
-    check_response(request)
-    return request.json()["jobId"]
+        ac_dict = None
+        for line in tabfile_feeder(uniprot_info_file, header=40):
+            if line[1].startswith("TARGETID"):
+                ac_dict = {"ttd_target_id": line[2]}
+            elif "UNIPROID" in line[1]:
+                delimiter_pattern = r'[;/-]'
+                if ";" in line[2] or "/" in line[2] or "-" in line[2] and "(" not in line[2]:
+                    uniprot_ac = re.split(delimiter_pattern, line[2])
+                    uniprot_ac = [item.strip() for item in uniprot_ac]
+                    ac_dict["uniprot_ac"] = uniprot_ac
+                elif "(" in line[2]:
+                    for ac in line[2].split("(")[0]:
+                        uniprot_ac = ac.strip()
+                        ac_dict["uniprot_ac"] = uniprot_ac
+                else:
+                    ac_dict["uniprot_ac"] = line[2]
 
+                if ac_dict:
+                    yield ac_dict
 
-def get_id_mapping_results_link(job_id):
-    url = f"{API_URL}/idmapping/uniprotkb/results/{job_id}"
-    return url
-
-
-def check_id_mapping_results_ready(job_id):
-    while True:
-        request = session.get(f"{API_URL}/idmapping/status/{job_id}")
-        check_response(request)
-        j = request.json()
-        if "jobStatus" in j:
-            if j["jobStatus"] == "RUNNING":
-                print(f"Retrying in {POLLING_INTERVAL}s")
-                time.sleep(POLLING_INTERVAL)
+    def get_tasks(self, session):
+        tasks = []
+        ac_info = self.get_uniprot_ac()
+        for ac_dict in ac_info:
+            if not isinstance(ac_dict["uniprot_ac"], list):
+                data = {"from": "UniProtKB_AC-ID", "to": "UniProtKB", "ids": ac_dict["uniprot_ac"]}
+                tasks.append(asyncio.create_task(session.post(f"{self.api_url}/idmapping/run", data=data)))
             else:
-                raise Exception(j["jobStatus"])
-        else:
-            return bool(j["results"] or j["failedIds"])
+                for ac in ac_dict["uniprot_ac"]:
+                    data = {"from": "UniProtKB_AC-ID", "to": "UniProtKB", "ids": ac}
+                    tasks.append(asyncio.create_task(session.post(f"{self.api_url}/idmapping/run", data=data)))
+        return tasks
+
+    async def get_jobIds(self):
+        async with aiohttp.ClientSession() as session:
+            tasks = self.get_tasks(session)
+            responses = await asyncio.gather(*tasks)
+            for response in responses:
+                self.job_ids.append(await response.json())
+
+    def run_async_task_job_ids(self):
+        asyncio.run(self.get_jobIds())
 
 
-def get_uniprot_kb_results(url):
-    request = session.get(url, headers=headers)
-    if request.json()["results"][0]["to"]["primaryAccession"]:
-        return request.json()["results"][0]["to"]["primaryAccession"]
+class MappedUniprotKbs:
+    def __init__(self, job_ids):
+        self.job_ids = job_ids
+        self.uniprot_ac_kb = []
+        self.api_url = "https://rest.uniprot.org"
+
+    def get_jobId_mapping_link(self, session):
+        tasks = []
+        for d in self.job_ids:
+            for job_id in d.values():
+                get_response = session.get(f"{self.api_url}/idmapping/uniprotkb/results/{job_id}", ssl=False)
+                tasks.append(asyncio.create_task(get_response))
+        return tasks
+
+    async def get_mapped_uniprot_kbs(self):
+        async with aiohttp.ClientSession(trust_env=True, timeout=aiohttp.ClientTimeout(total=300)) as session:
+            tasks = self.get_jobId_mapping_link(session)
+            batch_size = 10
+            task_batches = [tasks[i:i + batch_size] for i in range(0, len(tasks), batch_size)]
+
+            for batch in task_batches:
+                batch_result = await asyncio.gather(*batch)
+                for response in batch_result:
+                    try:
+                        results = await response.json()
+                        if results["results"]:
+                            if "failedIds" not in results:
+                                ac = results["results"][0]["from"]
+                                kb = results["results"][0]["to"]["primaryAccession"]
+                                mapped_dict = {"uniprot_kb": kb, "uniprot_ac": ac}
+                                self.uniprot_ac_kb.append(mapped_dict)
+                            else:
+                                pass
+                    except (aiohttp.client_exceptions.ClientOSError,
+                            aiohttp.client_exceptions.ServerDisconnectedError):
+                        await asyncio.sleep(3)  # To avoid hammering the server
 
 
-def get_human_uniprot_info(file_path):
-    mapping_file = os.path.join(file_path, "HUMAN_9606_idmapping.dat.gz")
-    assert os.path.exists(mapping_file)
+class UniprotMapping:
+    def __init__(self, file_path):
+        self.file_path = file_path
 
-    with open_anyfile(mapping_file) as file:
-        for line in file:
-            line = line.strip().split("\t")
-            uniprot_dict = {"uniprot_kb": line[0], "uniprot_ac": line[2]}
-            yield uniprot_dict
+    def run_async_tasks(self):
+        job_ids_obj = UniprotJobIDs(self.file_path)
+        job_ids_obj.run_async_task_job_ids()
+
+        mapped_uniprot_obj = MappedUniprotKbs(job_ids_obj.job_ids)
+        asyncio.run(mapped_uniprot_obj.get_mapped_uniprot_kbs())
+
+        mapped_uniprot_kbs = mapped_uniprot_obj.uniprot_ac_kb
+        ac_info = UniprotJobIDs(self.file_path).get_uniprot_ac()
+        ac_dict = {d["ttd_target_id"]: d["uniprot_ac"] for d in ac_info}
+        final_list = []
+        for d in mapped_uniprot_kbs:
+            for key, value in ac_dict.items():
+                if d["uniprot_ac"] in value:
+                    d["ttd_target_id"] = key
+
+        merged_uniprot_dict = defaultdict(list)
+        for d in mapped_uniprot_kbs:
+            merged_uniprot_dict[d.get("ttd_target_id")].append(d["uniprot_kb"])
+
+        for key, value in merged_uniprot_dict.items():
+            output_dict = {"ttd_target_id": key, "uniprot": value}
+            output_dict["uniprot"] = list(set(output_dict["uniprot"]))
+            final_list.append(output_dict)
+        yield final_list
 
 
 def get_target_info(file_path):
@@ -82,44 +142,24 @@ def get_target_info(file_path):
     assert os.path.exists(target_info_file)
 
     target_info = None
-    uniprot_map = {d["uniprot_ac"]: d for d in get_human_uniprot_info(file_path)}
-    request_ac = {}
+    uniprot_class = UniprotMapping(file_path)
+    uniprot_info = uniprot_class.run_async_tasks()
+    for data in uniprot_info:
+        uniprot_dict = {d["ttd_target_id"]: d for d in data}
 
-    for line in tabfile_feeder(target_info_file, header=40):
-        if line != ["", "", "", "", ""]:
-            if line[1].startswith("TARGETID"):
-                target_info = {"ttd_target_id": line[2]}
-            elif "UNIPROID" in line[1]:
-                if ";" in line[2]:
-                    uniprot_ac = [item.strip() for item in line[2].split(";")]
-                    uniprot_kb = [uniprot_map[item]["uniprot_kb"] for item in uniprot_ac if item in uniprot_map]
-                    if uniprot_kb:
-                        target_info["uniprot"] = uniprot_kb
+        for line in tabfile_feeder(target_info_file, header=40):
+            if line != ["", "", "", "", ""]:
+                if line[1].startswith("TARGETID"):
+                    if line[2] in uniprot_dict:
+                        target_info = {"ttd_target_id": line[2],
+                                       "uniprot": uniprot_dict[line[2]]["uniprot"]}
                     else:
-                        for ac in uniprot_ac:
-                            print(ac)
-                            job_id = submit_id_mapping(from_db="UniProtKB_AC-ID", to_db="UniProtKB", ids=ac)
-                            print(job_id)
-                            if check_id_mapping_results_ready(job_id):
-                                results = get_id_mapping_results_link(job_id)
-                                print(results)
-                                kb = get_uniprot_kb_results(results)
-                                print(kb)
-                                if results:
-                                    target_info["uniprot"] = kb
-                else:
-                    if line[2] in uniprot_map:
-                        target_info["uniprot"] = uniprot_map[line[2]]["uniprot_kb"]
-                    else:
-                        s_ac = {target_info["ttd_target_id"]: line[2]}
-                        request_ac.update(s_ac)
-            elif "TARGTYPE" in line[1]:
-                target_info["target_type"] = line[2].lower()
-            elif "BIOCLASS" in line[1]:
-                target_info["bioclass"] = line[2]
-        else:
-            if target_info:
-                yield target_info
+                        target_info = {"ttd_target_id": line[2]}
+                elif "TARGTYPE" in line[1]:
+                    target_info["target_type"] = line[2].lower()
+                elif "BIOCLASS" in line[1]:
+                    target_info["bioclass"] = line[2]
+                    yield target_info
 
 
 def load_drug_target(file_path):
@@ -138,10 +178,7 @@ def load_drug_target(file_path):
 
     target_info_d = {d["ttd_target_id"]: d for d in get_target_info(file_path)}
 
-    uniport_info_d = {d["uniport_AC"]: d for d in get_human_uniprot_info(file_path)}
-
     for dicts in drug_target_data:
-        object_node = {"id": None, "ttd_id": dicts["TargetID"], "type": "biolink:Protein"}
         drug_moa = dicts["MOA"]
 
         subject_node = {
@@ -149,25 +186,28 @@ def load_drug_target(file_path):
             "type": "biolink:Drug",
         }
 
-        if object_node["ttd_id"] in target_info_d:
-            object_node.update(target_info_d[object_node["ttd_id"]])
+        if dicts["TargetID"] in target_info_d:
+            if "uniprot" not in target_info_d[dicts["TargetID"]]:
+                object_node = {"id": f"ttd_target_id:{dicts['TargetID']}"}
+                object_node.update(target_info_d[dicts["TargetID"]])
+            else:
+                object_node = {"id": f"uniprot:{target_info_d[dicts['TargetID']].get('uniprot')[0]}",
+                               "type": "biolink:Protein"}
+                object_node.update(target_info_d[dicts["TargetID"]])
 
-        if object_node["uniprot"] in uniport_info_d:
-            object_node.update(uniport_info_d[object_node["uniprot"]])
+                _id = f"{subject_node['id']}_associated_with_{object_node['id'].split(':')[1]}"
+                association = {"predicate": "biolink:associated_with", "trial_status": dicts["Highest_status"].lower()}
+                if drug_moa != ".":
+                    association["moa"] = drug_moa.lower()
 
-        _id = f"{subject_node['id']}_associated_with_{object_node['id']}"
-        association = {"predicate": "biolink:associated_with", "trial_status": dicts["Highest_status"].lower()}
-        if drug_moa != ".":
-            association["moa"] = drug_moa.lower()
+                output_dict = {
+                    "_id": _id,
+                    "association": association,
+                    "object": object_node,
+                    "subject": subject_node,
+                }
 
-        output_dict = {
-            "_id": _id,
-            "association": association,
-            "object": object_node,
-            "subject": subject_node,
-        }
-
-        yield output_dict
+                yield output_dict
 
 
 def load_drug_dis_data(file_path):
@@ -463,10 +503,10 @@ def load_data(file_path):
     from itertools import chain
 
     for doc in chain(
-        load_drug_target(file_path),
-        load_drug_dis_data(file_path),
-        load_target_dis_data(file_path),
-        load_biomarker_dis_data(file_path),
-        load_drug_target_act(file_path),
+            load_drug_target(file_path),
+            load_drug_dis_data(file_path),
+            load_target_dis_data(file_path),
+            load_biomarker_dis_data(file_path),
+            load_drug_target_act(file_path),
     ):
         yield doc
