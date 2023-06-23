@@ -94,7 +94,7 @@ class MappedUniprotKbs:
                                 mapped_dict = {"uniprot_kb": kb, "uniprot_ac": ac}
                                 self.uniprot_ac_kb.append(mapped_dict)
                             else:
-                                pass
+                                print(f"{results[results][0]['from']} cannot be found on uniprot.")
                     except (aiohttp.client_exceptions.ClientOSError,
                             aiohttp.client_exceptions.ServerDisconnectedError):
                         await asyncio.sleep(3)  # To avoid hammering the server
@@ -112,16 +112,24 @@ class UniprotMapping:
         asyncio.run(mapped_uniprot_obj.get_mapped_uniprot_kbs())
 
         mapped_uniprot_kbs = mapped_uniprot_obj.uniprot_ac_kb
+        unique_mapped_kbs = set()
+        filtered_mapped_kbs = []
+        for item in mapped_uniprot_kbs:
+            item_tuple = tuple(item.items())
+            if item_tuple not in unique_mapped_kbs:
+                unique_mapped_kbs.add(item_tuple)
+                filtered_mapped_kbs.append(item)
+
         ac_info = UniprotJobIDs(self.file_path).get_uniprot_ac()
         ac_dict = {d["ttd_target_id"]: d["uniprot_ac"] for d in ac_info}
         final_list = []
-        for d in mapped_uniprot_kbs:
+        for d in filtered_mapped_kbs:
             for key, value in ac_dict.items():
                 if d["uniprot_ac"] in value:
                     d["ttd_target_id"] = key
 
         merged_uniprot_dict = defaultdict(list)
-        for d in mapped_uniprot_kbs:
+        for d in filtered_mapped_kbs:
             merged_uniprot_dict[d.get("ttd_target_id")].append(d["uniprot_kb"])
 
         for key, value in merged_uniprot_dict.items():
@@ -159,7 +167,30 @@ def get_target_info(file_path):
                     target_info["target_type"] = line[2].lower()
                 elif "BIOCLASS" in line[1]:
                     target_info["bioclass"] = line[2]
-                    yield target_info
+
+            else:
+                yield target_info
+
+
+def mapping_drug_id(file_path):
+    drug_mapping_file = os.path.join(file_path, "P1-03-TTD_crossmatching.txt")
+    assert os.path.exists(drug_mapping_file)
+
+    drug_mapping_info = None
+    for line in tabfile_feeder(drug_mapping_file, header=28):
+        if line != ['', '', '']:  # empty lines in the txt file need to be removed
+            if line[1].startswith("TTDDRUID"):
+                drug_mapping_info = {"ttd_drug_id": line[2]}
+            elif line[1].startswith("PUBCHCID"):
+                if ";" in line[2]:
+                    drug_mapping_info["pubchem_cid"] = [cid.strip() for cid in line[2].split(";")]
+                else:
+                    drug_mapping_info["pubchem_cid"] = line[2]
+            elif line[1].startswith("ChEBI_ID"):
+                drug_mapping_info["chembi_id"] = line[2].split(":")[1]
+
+            if drug_mapping_info:
+                yield drug_mapping_info
 
 
 def load_drug_target(file_path):
@@ -177,37 +208,44 @@ def load_drug_target(file_path):
     drug_target_data = pd.read_excel(drug_targ_file, engine="openpyxl").to_dict(orient="records")
 
     target_info_d = {d["ttd_target_id"]: d for d in get_target_info(file_path)}
+    drug_mapping_info = {d["ttd_drug_id"]: d for d in mapping_drug_id(file_path)}
 
     for dicts in drug_target_data:
-        drug_moa = dicts["MOA"]
-
-        subject_node = {
-            "id": dicts["DrugID"],
-            "type": "biolink:Drug",
-        }
-
         if dicts["TargetID"] in target_info_d:
-            if "uniprot" not in target_info_d[dicts["TargetID"]]:
-                object_node = {"id": f"ttd_target_id:{dicts['TargetID']}"}
-                object_node.update(target_info_d[dicts["TargetID"]])
+            if "uniprot" in target_info_d[dicts["TargetID"]]:
+                object_node = {"id": f"uniprot:{target_info_d[dicts['TargetID']].get('uniprot')[0]}"}
             else:
-                object_node = {"id": f"uniprot:{target_info_d[dicts['TargetID']].get('uniprot')[0]}",
-                               "type": "biolink:Protein"}
-                object_node.update(target_info_d[dicts["TargetID"]])
+                object_node = {"id": f"ttd_target_id:{dicts['TargetID']}"}
+            object_node.update(target_info_d[dicts["TargetID"]])
+            object_node["type"] = "biolink:Protein"
+        else:
+            object_node = {"id": f"ttd_target_id:{dicts['TargetID']}", "type": "biolink:Protein"}
 
-                _id = f"{subject_node['id']}_associated_with_{object_node['id'].split(':')[1]}"
-                association = {"predicate": "biolink:associated_with", "trial_status": dicts["Highest_status"].lower()}
-                if drug_moa != ".":
-                    association["moa"] = drug_moa.lower()
+        if dicts["DrugID"] in drug_mapping_info:
+            if "chembi_id" in drug_mapping_info[dicts["DrugID"]]:
+                subject_node = {"id": f"chembi_id:{drug_mapping_info[dicts['DrugID']]['chembi_id']}"}
+            elif "pubchem_cid" in drug_mapping_info[dicts["DrugID"]] and "chembi_id" not in drug_mapping_info[dicts["DrugID"]]:
+                subject_node = {"id": f"pubchem_cid:{drug_mapping_info[dicts['DrugID']]['pubchem_cid']}"}
+            else:
+                subject_node = {"id": f"ttd_drug_id:{dicts['DrugID']}"}
+            subject_node.update(drug_mapping_info[dicts["DrugID"]])
+            subject_node["type"] = "biolink:Drug"
 
-                output_dict = {
-                    "_id": _id,
-                    "association": association,
-                    "object": object_node,
-                    "subject": subject_node,
-                }
+        else:
+            subject_node = {"id": f"ttd_drug_id:{dicts['DrugID']}", "type": "biolink:Drug"}
 
-                yield output_dict
+        _id = f"{subject_node['id'].split(':')[1]}_associated_with_{object_node['id'].split(':')[1]}"
+        association = {"predicate": "biolink:associated_with", "trial_status": dicts["Highest_status"].lower()}
+        output_dict = {"_id": _id,
+                       "association": association,
+                       "object": object_node,
+                       "subject": subject_node}
+
+        drug_moa = dicts["MOA"]
+        if drug_moa != ".":
+            association["moa"] = drug_moa.lower()
+
+            yield output_dict
 
 
 def load_drug_dis_data(file_path):
