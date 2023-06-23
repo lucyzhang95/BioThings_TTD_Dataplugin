@@ -210,6 +210,8 @@ def load_drug_target(file_path):
     target_info_d = {d["ttd_target_id"]: d for d in get_target_info(file_path)}
     drug_mapping_info = {d["ttd_drug_id"]: d for d in mapping_drug_id(file_path)}
 
+    all_output_l = []
+
     for dicts in drug_target_data:
         if dicts["TargetID"] in target_info_d:
             if "uniprot" in target_info_d[dicts["TargetID"]]:
@@ -245,7 +247,25 @@ def load_drug_target(file_path):
         if drug_moa != ".":
             association["moa"] = drug_moa.lower()
 
-            yield output_dict
+            all_output_l.append(output_dict)
+
+    """Remove duplicates with same _id (same pubchem_cid/chembi_id but different ttd_drug_id) 
+    For example: 
+    {'_id': '445455_associated_with_P13631', 'subject':{'ttd_drug_id': 'D0M3LK', 'pubchem_cid': '445455'}}
+    {'_id': '445455_associated_with_P13631' 'subject':{'ttd_drug_id': 'D0MC3J', 'pubchem_cid': '445455'}}
+    Only keep the first one.
+    """
+
+    unique_ids = {}
+    filtered_data = []
+    for output in all_output_l:
+        _id = output["_id"]
+        if _id not in unique_ids:
+            unique_ids[_id] = True
+            filtered_data.append(output)
+
+    for item in filtered_data:
+        yield item
 
 
 def load_drug_dis_data(file_path):
@@ -258,13 +278,17 @@ def load_drug_dis_data(file_path):
     drug_dis_file = os.path.join(file_path, "P1-05-Drug_disease.txt")
     assert os.path.exists(drug_dis_file)
 
+    # dictionary contains drug chembi_id and pubchem_cid info
+    drug_mapping_info = {d["ttd_drug_id"]: d for d in mapping_drug_id(file_path)}
+
     drug_dis_list = []
+    all_output_l = []
 
     drug_id = None
     drug_name = None
 
     for line in tabfile_feeder(drug_dis_file, header=22):
-        # data file has empty spaces
+        # data file has empty lines
         if line != ["", "", "", "", ""]:
             if line[0] == "TTDDRUID":
                 drug_id = line[1]
@@ -306,15 +330,45 @@ def load_drug_dis_data(file_path):
             "type": "biolink:Disease",
         }
 
-        subject_node = {"id": drug_id, "name": drug_name, "type": "biolink:Drug"}
+        if drug_id in drug_mapping_info:
+            if "chembi_id" in drug_mapping_info[drug_id]:
+                subject_node = {"id": f"chembi_id:{drug_mapping_info[drug_id]['chembi_id']}"}
+            elif "pubchem_cid" in drug_mapping_info[drug_id] and "chembi_id" not in drug_mapping_info[drug_id]:
+                subject_node = {"id": f"pubchem_cid:{drug_mapping_info[drug_id]['pubchem_cid']}"}
+            else:
+                subject_node = {"id": f"ttd_drug_id:{drug_id}"}
+            subject_node.update(drug_mapping_info[drug_id])
+            subject_node["name"] = drug_name
+            subject_node["type"] = "biolink:Drug"
+        else:
+            subject_node = {"id": f"ttd_drug_id:{drug_id}", "type": "biolink:Drug"}
 
         output_dict = {
-            "_id": f"{drug_id}_treats_{icd11}",
+            "_id": f"{subject_node['id'].split(':')[1]}_treats_{icd11}",
             "association": association,
             "object": object_node,
             "subject": subject_node,
         }
-        yield output_dict
+
+        all_output_l.append(output_dict)
+
+    """Remove duplicates with same _id (same pubchem_cid/chembi_id but different ttd_drug_id) 
+        For example: 
+        {'_id': '143117_treats_2C25.Y', 'subject':{'ttd_drug_id': 'D04DYC', 'chembi_id': '143117'}}
+        {'_id': '143117_treats_2C25.Y' 'subject':{'ttd_drug_id': 'D04DYC', 'chembi_id': '143117'}}
+        Only keep the first one.
+    """
+
+    unique_ids = {}
+    filtered_data = []
+    for output in all_output_l:
+        _id = output["_id"]
+        if _id not in unique_ids:
+            unique_ids[_id] = True
+            filtered_data.append(output)
+
+    for item in filtered_data:
+        yield item
 
 
 def load_target_dis_data(file_path):
