@@ -225,7 +225,6 @@ def load_drug_target(file_path):
 
     target_info_d = {d["ttd_target_id"]: d for d in get_target_info(file_path)}
     drug_mapping_info = {d["ttd_drug_id"]: d for d in mapping_drug_id(file_path)}
-    drug_act_info = {d["id"]: d for d in get_drug_target_act(file_path)}
 
     all_output_l = []
 
@@ -252,9 +251,6 @@ def load_drug_target(file_path):
 
         else:
             subject_node = {"id": f"ttd_drug_id:{dicts['DrugID']}", "type": "biolink:Drug"}
-
-        if subject_node['id'].split(':')[1] in drug_act_info:
-            subject_node.update()
 
         _id = f"{subject_node['id'].split(':')[1]}_associated_with_{object_node['id'].split(':')[1]}"
         association = {"predicate": "biolink:associated_with", "trial_status": dicts["Highest_status"].lower()}
