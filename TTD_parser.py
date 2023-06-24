@@ -193,6 +193,22 @@ def mapping_drug_id(file_path):
                 yield drug_mapping_info
 
 
+def get_drug_target_act(file_path):
+    activity_file = os.path.join(file_path, "P1-09-Target_compound_activity.txt")
+    assert os.path.exists(activity_file)
+
+    for line in tabfile_feeder(activity_file, header=1):
+        act_dict = {"id": line[2]}
+
+        pattern = re.match(r"(IC50|Ki|EC50)\s+(.+)", line[3])
+        if pattern:
+            act_dict[pattern.groups()[0].lower()] = pattern.groups()[1].replace(" ", "")
+        else:
+            print(f"{line[3]} pattern does not match.")
+
+        yield act_dict
+
+
 def load_drug_target(file_path):
     """load data from P1-07-Drug-TargetMapping.xlsx file
         and clean up the data
@@ -209,6 +225,7 @@ def load_drug_target(file_path):
 
     target_info_d = {d["ttd_target_id"]: d for d in get_target_info(file_path)}
     drug_mapping_info = {d["ttd_drug_id"]: d for d in mapping_drug_id(file_path)}
+    drug_act_info = {d["id"]: d for d in get_drug_target_act(file_path)}
 
     all_output_l = []
 
@@ -235,6 +252,9 @@ def load_drug_target(file_path):
 
         else:
             subject_node = {"id": f"ttd_drug_id:{dicts['DrugID']}", "type": "biolink:Drug"}
+
+        if subject_node['id'].split(':')[1] in drug_act_info:
+            subject_node.update()
 
         _id = f"{subject_node['id'].split(':')[1]}_associated_with_{object_node['id'].split(':')[1]}"
         association = {"predicate": "biolink:associated_with", "trial_status": dicts["Highest_status"].lower()}
@@ -381,7 +401,7 @@ def load_target_dis_data(file_path):
     target_dis_file = os.path.join(file_path, "P1-06-Target_disease.txt")
     assert os.path.exists(target_dis_file)
 
-    target_info_d = {d["target_id"]: d for d in get_target_info(file_path)}
+    target_info_d = {d["ttd_target_id"]: d for d in get_target_info(file_path)}
 
     targ_dis_list = []
 
@@ -417,16 +437,20 @@ def load_target_dis_data(file_path):
         targ_name = _id.split("_")[1]
         icd11 = _id.split("_")[2]
 
+        if targ_id in target_info_d:
+            if "uniprot" in target_info_d[targ_id]:
+                subject_node = {"id": f"uniprot:{target_info_d[targ_id].get('uniprot')[0]}"}
+            else:
+                subject_node = {"id": f"ttd_target_id:{targ_id}"}
+            subject_node.update(target_info_d[targ_id])
+            subject_node["name"] = targ_name
+            subject_node["type"] = "biolink:Protein"
+        else:
+            subject_node = {"id": f"ttd_target_id:{targ_id}", "name": targ_name, "type": "biolink:Protein"}
+
         association = {
             "predicate": "biolink:target_for",
             "clinical_trial": trial_list,
-        }
-        _id = f"{targ_id}_target_for_{icd11}"
-
-        subject_node = {
-            "id": targ_id,
-            "name": targ_name,
-            "type": "biolink:Protein",
         }
 
         object_node = {
@@ -436,8 +460,7 @@ def load_target_dis_data(file_path):
             "type": "biolink:Disease",
         }
 
-        if subject_node["id"] in target_info_d:
-            subject_node.update(target_info_d[subject_node["id"]])
+        _id = f"{subject_node['id'].split(':')[1]}_target_for_{icd11}"
 
         output_dict = {
             "_id": _id,
@@ -545,25 +568,28 @@ def load_drug_target_act(file_path):
     activity_file = os.path.join(file_path, "P1-09-Target_compound_activity.txt")
     assert os.path.exists(activity_file)
 
-    target_info_d = {d["target_id"]: d for d in get_target_info(file_path)}
+    target_info_d = {d["ttd_target_id"]: d for d in get_target_info(file_path)}
 
     subject_node = {}
-    object_node = {}
 
     for line in tabfile_feeder(activity_file, header=1):
-        subject_node["id"] = line[2]
+        subject_node["id"] = f"pubchem_cid:{line[2]}"
         subject_node["pubchem_cid"] = line[2]
-        subject_node["ttd_id"] = line[1]
+        subject_node["ttd_drug_id"] = line[1]
         subject_node["type"] = "biolink:Drug"
 
-        object_node["id"] = line[0]
-        object_node["type"] = "biolink:Protein"
+        if line[0] in target_info_d:
+            if "uniprot" in target_info_d[line[0]]:
+                object_node = {"id": f"uniprot:{target_info_d[line[0]].get('uniprot')[0]}"}
+            else:
+                object_node = {"id": f"ttd_target_id:{line[0]}"}
+            object_node.update(target_info_d[line[0]])
+            object_node["type"] = "biolink:Protein"
+        else:
+            object_node = {"id": f"ttd_target_id:{line[0]}", "type": "biolink:Protein"}
 
         if subject_node and object_node:
-            if object_node["id"] in target_info_d:
-                object_node.update(target_info_d[object_node["id"]])
-
-            _id = f"{subject_node['id']}_associated_with_{object_node['id']}"
+            _id = f"{subject_node['id'].split(':')[1]}_associated_with_{object_node['id'].split(':')[1]}"
             association = {"predicate": "biolink:associated_with"}
 
             pattern = re.match(r"(IC50|Ki|EC50)\s+(.+)", line[3])
