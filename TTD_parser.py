@@ -1,14 +1,17 @@
+import asyncio
 import os.path
 import re
-import aiohttp
-import aiohttp.client_exceptions
-import asyncio
 from collections import defaultdict
 
+import aiohttp
+import aiohttp.client_exceptions
 from biothings.utils.dataload import tabfile_feeder
 
 
 class UniprotJobIDs:
+    """
+
+    """
     def __init__(self, file_path):
         self.file_path = file_path
         self.job_ids = []
@@ -23,7 +26,7 @@ class UniprotJobIDs:
             if line[1].startswith("TARGETID"):
                 ac_dict = {"ttd_target_id": line[2]}
             elif "UNIPROID" in line[1]:
-                delimiter_pattern = r'[;/-]'
+                delimiter_pattern = r"[;/-]"
                 if ";" in line[2] or "/" in line[2] or "-" in line[2] and "(" not in line[2]:
                     uniprot_ac = re.split(delimiter_pattern, line[2])
                     uniprot_ac = [item.strip() for item in uniprot_ac]
@@ -80,7 +83,7 @@ class MappedUniprotKbs:
         async with aiohttp.ClientSession(trust_env=True, timeout=aiohttp.ClientTimeout(total=300)) as session:
             tasks = self.get_jobId_mapping_link(session)
             batch_size = 10
-            task_batches = [tasks[i:i + batch_size] for i in range(0, len(tasks), batch_size)]
+            task_batches = [tasks[i : i + batch_size] for i in range(0, len(tasks), batch_size)]
 
             for batch in task_batches:
                 batch_result = await asyncio.gather(*batch)
@@ -95,8 +98,7 @@ class MappedUniprotKbs:
                                 self.uniprot_ac_kb.append(mapped_dict)
                             else:
                                 print(f"{results[results][0]['from']} cannot be found on uniprot.")
-                    except (aiohttp.client_exceptions.ClientOSError,
-                            aiohttp.client_exceptions.ServerDisconnectedError):
+                    except (aiohttp.client_exceptions.ClientOSError, aiohttp.client_exceptions.ServerDisconnectedError):
                         await asyncio.sleep(3)  # To avoid hammering the server
 
 
@@ -159,8 +161,7 @@ def get_target_info(file_path):
             if line != ["", "", "", "", ""]:
                 if line[1].startswith("TARGETID"):
                     if line[2] in uniprot_dict:
-                        target_info = {"ttd_target_id": line[2],
-                                       "uniprot": uniprot_dict[line[2]]["uniprot"]}
+                        target_info = {"ttd_target_id": line[2], "uniprot": uniprot_dict[line[2]]["uniprot"]}
                     else:
                         target_info = {"ttd_target_id": line[2]}
                 elif "TARGTYPE" in line[1]:
@@ -178,7 +179,7 @@ def mapping_drug_id(file_path):
 
     drug_mapping_info = None
     for line in tabfile_feeder(drug_mapping_file, header=28):
-        if line != ['', '', '']:  # empty lines in the txt file need to be removed
+        if line != ["", "", ""]:  # empty lines in the txt file need to be removed
             if line[1].startswith("TTDDRUID"):
                 drug_mapping_info = {"ttd_drug_id": line[2]}
             elif line[1].startswith("PUBCHCID"):
@@ -191,22 +192,6 @@ def mapping_drug_id(file_path):
 
             if drug_mapping_info:
                 yield drug_mapping_info
-
-
-def get_drug_target_act(file_path):
-    activity_file = os.path.join(file_path, "P1-09-Target_compound_activity.txt")
-    assert os.path.exists(activity_file)
-
-    for line in tabfile_feeder(activity_file, header=1):
-        act_dict = {"id": line[2]}
-
-        pattern = re.match(r"(IC50|Ki|EC50)\s+(.+)", line[3])
-        if pattern:
-            act_dict[pattern.groups()[0].lower()] = pattern.groups()[1].replace(" ", "")
-        else:
-            print(f"{line[3]} pattern does not match.")
-
-        yield act_dict
 
 
 def load_drug_target(file_path):
@@ -241,9 +226,12 @@ def load_drug_target(file_path):
 
         if dicts["DrugID"] in drug_mapping_info:
             if "chembi_id" in drug_mapping_info[dicts["DrugID"]]:
-                subject_node = {"id": f"chembi_id:{drug_mapping_info[dicts['DrugID']]['chembi_id']}"}
-            elif "pubchem_cid" in drug_mapping_info[dicts["DrugID"]] and "chembi_id" not in drug_mapping_info[dicts["DrugID"]]:
-                subject_node = {"id": f"pubchem_cid:{drug_mapping_info[dicts['DrugID']]['pubchem_cid']}"}
+                subject_node = {"id": f"chembi_id:{drug_mapping_info[dicts['DrugID']]['chembi_id'][0]}"}
+            elif (
+                "pubchem_cid" in drug_mapping_info[dicts["DrugID"]]
+                and "chembi_id" not in drug_mapping_info[dicts["DrugID"]]
+            ):
+                subject_node = {"id": f"pubchem_cid:{drug_mapping_info[dicts['DrugID']]['pubchem_cid'][0]}"}
             else:
                 subject_node = {"id": f"ttd_drug_id:{dicts['DrugID']}"}
             subject_node.update(drug_mapping_info[dicts["DrugID"]])
@@ -254,10 +242,7 @@ def load_drug_target(file_path):
 
         _id = f"{subject_node['id'].split(':')[1]}_associated_with_{object_node['id'].split(':')[1]}"
         association = {"predicate": "biolink:associated_with", "trial_status": dicts["Highest_status"].lower()}
-        output_dict = {"_id": _id,
-                       "association": association,
-                       "object": object_node,
-                       "subject": subject_node}
+        output_dict = {"_id": _id, "association": association, "object": object_node, "subject": subject_node}
 
         drug_moa = dicts["MOA"]
         if drug_moa != ".":
@@ -265,7 +250,8 @@ def load_drug_target(file_path):
 
             all_output_l.append(output_dict)
 
-    """Remove duplicates with same _id (same pubchem_cid/chembi_id but different ttd_drug_id) 
+    """
+    Remove duplicates with same _id (same pubchem_cid/chembi_id but different ttd_drug_id) 
     For example: 
     {'_id': '445455_associated_with_P13631', 'subject':{'ttd_drug_id': 'D0M3LK', 'pubchem_cid': '445455'}}
     {'_id': '445455_associated_with_P13631' 'subject':{'ttd_drug_id': 'D0MC3J', 'pubchem_cid': '445455'}}
@@ -348,9 +334,9 @@ def load_drug_dis_data(file_path):
 
         if drug_id in drug_mapping_info:
             if "chembi_id" in drug_mapping_info[drug_id]:
-                subject_node = {"id": f"chembi_id:{drug_mapping_info[drug_id]['chembi_id']}"}
+                subject_node = {"id": f"chembi_id:{drug_mapping_info[drug_id]['chembi_id'][0]}"}
             elif "pubchem_cid" in drug_mapping_info[drug_id] and "chembi_id" not in drug_mapping_info[drug_id]:
-                subject_node = {"id": f"pubchem_cid:{drug_mapping_info[drug_id]['pubchem_cid']}"}
+                subject_node = {"id": f"pubchem_cid:{drug_mapping_info[drug_id]['pubchem_cid'][0]}"}
             else:
                 subject_node = {"id": f"ttd_drug_id:{drug_id}"}
             subject_node.update(drug_mapping_info[drug_id])
@@ -368,11 +354,12 @@ def load_drug_dis_data(file_path):
 
         all_output_l.append(output_dict)
 
-    """Remove duplicates with same _id (same pubchem_cid/chembi_id but different ttd_drug_id) 
-        For example: 
-        {'_id': '143117_treats_2C25.Y', 'subject':{'ttd_drug_id': 'D04DYC', 'chembi_id': '143117'}}
-        {'_id': '143117_treats_2C25.Y' 'subject':{'ttd_drug_id': 'D04DYC', 'chembi_id': '143117'}}
-        Only keep the first one.
+    """
+    Remove duplicates with same _id (same pubchem_cid/chembi_id but different ttd_drug_id) 
+    For example: 
+    {'_id': '143117_treats_2C25.Y', 'subject':{'ttd_drug_id': 'D04DYC', 'chembi_id': '143117'}}
+    {'_id': '143117_treats_2C25.Y' 'subject':{'ttd_drug_id': 'D04DYC', 'chembi_id': '143117'}}
+    Only keep the first one.
     """
 
     unique_ids = {}
@@ -614,13 +601,44 @@ def load_data(file_path):
     file_path: directory stores all downloaded data files
     """
 
-    from itertools import chain
+    from itertools import chain, groupby
+    from operator import itemgetter
 
-    for doc in chain(
-            load_drug_target(file_path),
-            load_drug_dis_data(file_path),
-            load_target_dis_data(file_path),
-            load_biomarker_dis_data(file_path),
-            load_drug_target_act(file_path),
-    ):
-        yield doc
+    def merge_dicts(dicts):
+        """merge dictionaries with the same _id
+        load_drug_target() function and load_drug_target_act() has 11198 duplicated _ids
+
+        Keyword arguments:
+        dicts: itertools chain to iterate through all dictionaries from all above load functions
+        """
+        merged_docs = {}
+        sorted_dicts = sorted(dicts, key=itemgetter("_id"))
+        grouped_dicts = groupby(sorted_dicts, key=itemgetter("_id"))
+
+        for _id, group in grouped_dicts:
+            merged_doc = {}
+            for doc in group:
+                for key, value in doc.items():
+                    if key in merged_doc:
+                        if "association" in key:
+                            value.update(value)
+                            merged_doc[key] = value
+                        else:
+                            pass
+                    else:
+                        merged_doc[key] = value
+
+            merged_docs[_id] = merged_doc
+
+        return merged_docs.values()
+
+    dicts = chain(
+        load_drug_target(file_path),
+        load_drug_dis_data(file_path),
+        load_target_dis_data(file_path),
+        load_biomarker_dis_data(file_path),
+        load_drug_target_act(file_path),
+    )
+
+    merged_dicts = merge_dicts(dicts)
+    yield from merged_dicts
