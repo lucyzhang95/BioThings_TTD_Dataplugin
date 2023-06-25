@@ -6,7 +6,7 @@
   },
   "display_name": "TTD",
   "biothing_type": "association",
-  "requires": ["pandas", "openpyxl"],
+  "requires": ["pandas", "openpyxl", "aiohttp", "asyncio"],
   "dumper": {
     "data_url": [
       "https://db.idrblab.net/ttd/sites/default/files/ttd_database/P1-01-TTD_target_download.txt",
