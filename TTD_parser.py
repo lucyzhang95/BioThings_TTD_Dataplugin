@@ -16,6 +16,7 @@ class UniprotJobIDs:
     :param file_path: The arg is uniprot source file "P1-01-TTD_target_download.txt"
     :type file_path: str
     """
+
     def __init__(self, file_path):
         self.file_path = file_path
         self.job_ids = []
@@ -96,6 +97,7 @@ class MappedUniprotKbs:
     :param job_ids: is used for gathering the jobIDs from class UniprotJobIDs
     :type job_ids: list
     """
+
     def __init__(self, job_ids):
         self.job_ids = job_ids
         self.uniprot_ac_kb = []
@@ -122,7 +124,7 @@ class MappedUniprotKbs:
         async with aiohttp.ClientSession(trust_env=True, timeout=aiohttp.ClientTimeout(total=300)) as session:
             tasks = self.get_jobId_mapping_link(session)
             batch_size = 10
-            task_batches = [tasks[i: i + batch_size] for i in range(0, len(tasks), batch_size)]
+            task_batches = [tasks[i : i + batch_size] for i in range(0, len(tasks), batch_size)]
 
             for batch in task_batches:
                 batch_result = await asyncio.gather(*batch)
@@ -153,6 +155,7 @@ class UniprotMapping:
     :param file_path: location of the uniprot source file "P1-01-TTD_target_download.txt"
     :type file_path: str
     """
+
     def __init__(self, file_path):
         self.file_path = file_path
 
