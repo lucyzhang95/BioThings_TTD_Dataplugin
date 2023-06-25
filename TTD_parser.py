@@ -10,7 +10,11 @@ from biothings.utils.dataload import tabfile_feeder
 
 class UniprotJobIDs:
     """
+    The UniprotJobIDs object uses aiohttp and asyncio to obtain uniprot jobIDs
+    jobIDs will be used to be included in the url for uniprot ac requests later
 
+    :param file_path: The arg is uniprot source file "P1-01-TTD_target_download.txt"
+    :type file_path: str
     """
     def __init__(self, file_path):
         self.file_path = file_path
@@ -18,6 +22,11 @@ class UniprotJobIDs:
         self.api_url = "https://rest.uniprot.org"
 
     def get_uniprot_ac(self):
+        """obtain uniprot ac information from "P1-01-TTD_target_download.txt"
+        and store in a dictionary {"ttd_target_id": "id", "uniprot_ac": "ac"}
+
+        :return: dictionary object
+        """
         uniprot_info_file = os.path.join(self.file_path, "P1-01-TTD_target_download.txt")
         assert os.path.exists(uniprot_info_file)
 
@@ -42,6 +51,12 @@ class UniprotJobIDs:
                     yield ac_dict
 
     def get_tasks(self, session):
+        """generate asyncio co-routine tasks
+        to request jobIDs from "https://rest.uniprot.org/idmapping/run"
+
+        :param session: aiohttp.ClientSession used in get_jobIDs() function
+        :return: asyncio co-routine tasks
+        """
         tasks = []
         ac_info = self.get_uniprot_ac()
         for ac_dict in ac_info:
@@ -55,6 +70,10 @@ class UniprotJobIDs:
         return tasks
 
     async def get_jobIds(self):
+        """obtain uniprot jobIDs
+        from "https://rest.uniprot.org/idmapping/run"
+
+        """
         async with aiohttp.ClientSession() as session:
             tasks = self.get_tasks(session)
             responses = await asyncio.gather(*tasks)
@@ -62,16 +81,32 @@ class UniprotJobIDs:
                 self.job_ids.append(await response.json())
 
     def run_async_task_job_ids(self):
+        """execute get_jobIDs() when called and obtain jobID json output
+
+        :return: actual uniport jobIDs (c8e6978b19d064e5e15b9dbc1fed622e2e8d85ac)
+        """
         asyncio.run(self.get_jobIds())
 
 
 class MappedUniprotKbs:
+    """
+    The MappedUniprotKbs object uses aiohttp and asyncio
+    to obtain uniprot json outputs for mapping uniprot ac to kb IDs
+
+    :param job_ids: is used for gathering the jobIDs from class UniprotJobIDs
+    :type job_ids: list
+    """
     def __init__(self, job_ids):
         self.job_ids = job_ids
         self.uniprot_ac_kb = []
         self.api_url = "https://rest.uniprot.org"
 
     def get_jobId_mapping_link(self, session):
+        """get uniprot json output url using jobIDs for each request
+
+        :param session: asyncio task sessions for next get_mapped_uniprot_kbs function
+        :return: asyncio tasks for later use
+        """
         tasks = []
         for d in self.job_ids:
             for job_id in d.values():
@@ -80,10 +115,14 @@ class MappedUniprotKbs:
         return tasks
 
     async def get_mapped_uniprot_kbs(self):
+        """obtain mapped uniprot ac and kb IDs
+
+        :return: asyncio object contains list of {"uniprot_kb": "kb", "uniprot_ac": "ac"}
+        """
         async with aiohttp.ClientSession(trust_env=True, timeout=aiohttp.ClientTimeout(total=300)) as session:
             tasks = self.get_jobId_mapping_link(session)
             batch_size = 10
-            task_batches = [tasks[i : i + batch_size] for i in range(0, len(tasks), batch_size)]
+            task_batches = [tasks[i: i + batch_size] for i in range(0, len(tasks), batch_size)]
 
             for batch in task_batches:
                 batch_result = await asyncio.gather(*batch)
@@ -99,14 +138,30 @@ class MappedUniprotKbs:
                             else:
                                 print(f"{results[results][0]['from']} cannot be found on uniprot.")
                     except (aiohttp.client_exceptions.ClientOSError, aiohttp.client_exceptions.ServerDisconnectedError):
-                        await asyncio.sleep(3)  # To avoid hammering the server
+                        await asyncio.sleep(5)  # To avoid ClientConnectorError: 443 [Operation timed out]
 
 
 class UniprotMapping:
+    """
+    The UniprotMapping object executes both jobIDs tasks
+    and mapping uniprot ac_kb tasks
+
+    Also, map the uniprot_kb to its corresponding ttd_target_id
+    Merge the uniprot_kbs with the same ttd_target_id
+    Remove the duplicated uniprot_kbs
+
+    :param file_path: location of the uniprot source file "P1-01-TTD_target_download.txt"
+    :type file_path: str
+    """
     def __init__(self, file_path):
         self.file_path = file_path
 
     def run_async_tasks(self):
+        """execute both jobIDs asyncio tasks
+        and mapping uniprot ac_kb asyncio tasks
+
+        :return: list of dicts {"ttd_target_id":"id", "uniprot": "kb"}
+        """
         job_ids_obj = UniprotJobIDs(self.file_path)
         job_ids_obj.run_async_task_job_ids()
 
@@ -174,6 +229,14 @@ def get_target_info(file_path):
 
 
 def mapping_drug_id(file_path):
+    """get information from P1-03-TTD_crossmatching.txt file
+    information: ttd_drug_id, pubchem_cid, and chembi_id
+    map the pubchem_cid or chembi_id to ttd_drug_id
+
+    Keyword arguments:
+    file_path: directory stores P1-03-TTD_crossmatching.txt file
+    :return: dictionary {"ttd_drug_id": "id", "pubchem_cid": "", "chembi_id": ""}
+    """
     drug_mapping_file = os.path.join(file_path, "P1-03-TTD_crossmatching.txt")
     assert os.path.exists(drug_mapping_file)
 
