@@ -317,11 +317,11 @@ def load_drug_target(file_path):
             all_output_l.append(output_dict)
 
     """
-    Remove duplicates with same _id (same pubchem_cid/chembi_id but different ttd_drug_id) 
-    For example: 
+    Remove duplicates with same _id (same pubchem_cid/chembi_id but different ttd_drug_id)
+    For example:
     {'_id': '445455_associated_with_P13631', 'subject':{'ttd_drug_id': 'D0M3LK', 'pubchem_cid': '445455'}}
     {'_id': '445455_associated_with_P13631' 'subject':{'ttd_drug_id': 'D0MC3J', 'pubchem_cid': '445455'}}
-    Only keep the first one.
+    Only keep the first one
     """
 
     unique_ids = {}
@@ -421,11 +421,11 @@ def load_drug_dis_data(file_path):
         all_output_l.append(output_dict)
 
     """
-    Remove duplicates with same _id (same pubchem_cid/chembi_id but different ttd_drug_id) 
-    For example: 
+    Remove duplicates with same _id (same pubchem_cid/chembi_id but different ttd_drug_id)
+    For example:
     {'_id': '143117_treats_2C25.Y', 'subject':{'ttd_drug_id': 'D04DYC', 'chembi_id': '143117'}}
     {'_id': '143117_treats_2C25.Y' 'subject':{'ttd_drug_id': 'D04DYC', 'chembi_id': '143117'}}
-    Only keep the first one.
+    Only keep the first one
     """
 
     unique_ids = {}
