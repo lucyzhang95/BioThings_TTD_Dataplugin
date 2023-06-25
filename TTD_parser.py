@@ -368,7 +368,7 @@ def load_drug_dis_data(file_path):
                 trial_status = line[1].split("]")[1].strip().lower()
 
                 if drug_id and drug_name:
-                    _id = f"{drug_id}_{drug_name}_{icd11}"
+                    _id = f"{drug_id}__{drug_name}__{icd11}"
                     dict1 = {
                         "_id": _id,
                         "status": trial_status,
@@ -385,9 +385,9 @@ def load_drug_dis_data(file_path):
         merged_dicts[d["_id"]].append({"status": d["status"], "disease": d["disease"]})
 
     for _id, trial_list in merged_dicts.items():
-        drug_id = _id.split("_")[0]
-        drug_name = _id.split("_")[1]
-        icd11 = _id.split("_")[2]
+        drug_id = _id.split("__")[0]
+        drug_name = _id.split("__")[1]
+        icd11 = _id.split("__")[2]
 
         association = {"predicate": "biolink:treats", "clinical_trial": trial_list}
 
@@ -569,10 +569,8 @@ def load_biomarker_dis_data(file_path):
 
             object_node = {"id": line[0], "type": "biolink:Biomarker"}
 
-            disease_name = line[2].replace(" ", "_")
-
             biomarker_name = line[1]
-            _id = f"{line[0]}_biomarker_for_{disease_name}"
+            _id = f"{line[0]}_biomarker_for_{subject_node['id']}"
 
             pattern = r"^(.*\(.*?)(.*)$"
             if "," not in biomarker_name:
