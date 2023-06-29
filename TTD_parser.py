@@ -75,7 +75,7 @@ class UniprotJobIDs:
         from "https://rest.uniprot.org/idmapping/run"
 
         """
-        connector = aiohttp.TCPConnector(force_close=True, verify_ssl=False)
+        connector = aiohttp.TCPConnector(verify_ssl=False)
         async with aiohttp.ClientSession(connector=connector) as session:
             tasks = self.get_tasks(session)
             responses = await asyncio.gather(*tasks)
@@ -122,7 +122,7 @@ class MappedUniprotKbs:
 
         :return: asyncio object contains list of {"uniprot_kb": "kb", "uniprot_ac": "ac"}
         """
-        connector = aiohttp.TCPConnector(force_close=True, verify_ssl=False)  # Force TCP connection to close every time when request
+        connector = aiohttp.TCPConnector(verify_ssl=False)  # Force TCP connection to close every time when request
         async with aiohttp.ClientSession(trust_env=True, timeout=aiohttp.ClientTimeout(total=300), connector=connector) as session:
             tasks = self.get_jobId_mapping_link(session)
             batch_size = 10
@@ -133,13 +133,16 @@ class MappedUniprotKbs:
                 for response in batch_result:
                     try:
                         results = await response.json()
-                        if results["messages"]:
-                            print(f"{results['url'].split('/')[-1]} job id cannot be found on uniprot.")
+                        if results.get("messages"):
+                            print(f"{results.get('url')} cannot be found on uniprot.")
                         else:
-                            ac = results["results"][0]["from"]
-                            kb = results["results"][0]["to"]["primaryAccession"]
-                            mapped_dict = {"uniprot_kb": kb, "uniprot_ac": ac}
-                            self.uniprot_ac_kb.append(mapped_dict)
+                            try:
+                                ac = results.get("results")[0]["from"]
+                                kb = results.get("results")[0]["to"]["primaryAccession"]
+                                mapped_dict = {"uniprot_kb": kb, "uniprot_ac": ac}
+                                self.uniprot_ac_kb.append(mapped_dict)
+                            except IndexError:
+                                print(f"Job id cannot be found on uniprot.")
                     except (aiohttp.client_exceptions.ClientOSError, aiohttp.client_exceptions.ServerDisconnectedError):
                         await asyncio.sleep(5)  # To avoid ClientConnectorError: 443 [Operation timed out]
 
