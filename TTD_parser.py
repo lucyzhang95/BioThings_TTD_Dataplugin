@@ -75,7 +75,8 @@ class UniprotJobIDs:
         from "https://rest.uniprot.org/idmapping/run"
 
         """
-        async with aiohttp.ClientSession() as session:
+        connector = aiohttp.TCPConnector(force_close=True, verify_ssl=False)
+        async with aiohttp.ClientSession(connector=connector) as session:
             tasks = self.get_tasks(session)
             responses = await asyncio.gather(*tasks)
             for response in responses:
@@ -121,24 +122,24 @@ class MappedUniprotKbs:
 
         :return: asyncio object contains list of {"uniprot_kb": "kb", "uniprot_ac": "ac"}
         """
-        async with aiohttp.ClientSession(trust_env=True, timeout=aiohttp.ClientTimeout(total=300)) as session:
+        connector = aiohttp.TCPConnector(force_close=True, verify_ssl=False)  # Force TCP connection to close every time when request
+        async with aiohttp.ClientSession(trust_env=True, timeout=aiohttp.ClientTimeout(total=300), connector=connector) as session:
             tasks = self.get_jobId_mapping_link(session)
             batch_size = 10
-            task_batches = [tasks[i : i + batch_size] for i in range(0, len(tasks), batch_size)]
+            task_batches = [tasks[i: i + batch_size] for i in range(0, len(tasks), batch_size)]
 
             for batch in task_batches:
                 batch_result = await asyncio.gather(*batch)
                 for response in batch_result:
                     try:
                         results = await response.json()
-                        if results["results"]:
-                            if "failedIds" not in results:
-                                ac = results["results"][0]["from"]
-                                kb = results["results"][0]["to"]["primaryAccession"]
-                                mapped_dict = {"uniprot_kb": kb, "uniprot_ac": ac}
-                                self.uniprot_ac_kb.append(mapped_dict)
-                            else:
-                                print(f"{results[results][0]['from']} cannot be found on uniprot.")
+                        if results["messages"]:
+                            print(f"{results['url'].split('/')[-1]} job id cannot be found on uniprot.")
+                        else:
+                            ac = results["results"][0]["from"]
+                            kb = results["results"][0]["to"]["primaryAccession"]
+                            mapped_dict = {"uniprot_kb": kb, "uniprot_ac": ac}
+                            self.uniprot_ac_kb.append(mapped_dict)
                     except (aiohttp.client_exceptions.ClientOSError, aiohttp.client_exceptions.ServerDisconnectedError):
                         await asyncio.sleep(5)  # To avoid ClientConnectorError: 443 [Operation timed out]
 
