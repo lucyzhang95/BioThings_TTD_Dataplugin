@@ -228,7 +228,7 @@ def get_target_info(file_path):
             if line != ["", "", "", "", ""]:
                 if line[1].startswith("TARGETID"):
                     if line[2] in uniprot_dict:
-                        target_info = {"ttd_target_id": line[2], "uniprot": uniprot_dict[line[2]]["uniprot"]}
+                        target_info = {"ttd_target_id": line[2], "uniprotkb": uniprot_dict[line[2]]["uniprot"]}
                     else:
                         target_info = {"ttd_target_id": line[2]}
                 elif "TARGTYPE" in line[1]:
@@ -259,11 +259,11 @@ def mapping_drug_id(file_path):
                 drug_mapping_info = {"ttd_drug_id": line[2]}
             elif line[1].startswith("PUBCHCID"):
                 if ";" in line[2]:
-                    drug_mapping_info["pubchem_cid"] = [cid.strip() for cid in line[2].split(";")]
+                    drug_mapping_info["pubchem.compound"] = [cid.strip() for cid in line[2].split(";")]
                 else:
-                    drug_mapping_info["pubchem_cid"] = line[2]
+                    drug_mapping_info["pubchem.compound"] = line[2]
             elif line[1].startswith("ChEBI_ID"):
-                drug_mapping_info["chembi_id"] = line[2].split(":")[1]
+                drug_mapping_info["chebi"] = line[2].split(":")[1]
 
             if drug_mapping_info:
                 yield drug_mapping_info
@@ -290,8 +290,8 @@ def load_drug_target(file_path):
 
     for dicts in drug_target_data:
         if dicts["TargetID"] in target_info_d:
-            if "uniprot" in target_info_d[dicts["TargetID"]]:
-                object_node = {"id": f"uniprot:{target_info_d[dicts['TargetID']].get('uniprot')[0]}"}
+            if "uniprotkb" in target_info_d[dicts["TargetID"]]:
+                object_node = {"id": f"UniProtKB:{target_info_d[dicts['TargetID']].get('uniprotkb')[0]}"}
             else:
                 object_node = {"id": f"ttd_target_id:{dicts['TargetID']}"}
             object_node.update(target_info_d[dicts["TargetID"]])
@@ -300,13 +300,13 @@ def load_drug_target(file_path):
             object_node = {"id": f"ttd_target_id:{dicts['TargetID']}", "type": "biolink:Protein"}
 
         if dicts["DrugID"] in drug_mapping_info:
-            if "chembi_id" in drug_mapping_info[dicts["DrugID"]]:
-                subject_node = {"id": f"chembi_id:{drug_mapping_info[dicts['DrugID']]['chembi_id'][0]}"}
+            if "chebi" in drug_mapping_info[dicts["DrugID"]]:
+                subject_node = {"id": f"CHEBI:{drug_mapping_info[dicts['DrugID']]['chebi'][0]}"}
             elif (
-                "pubchem_cid" in drug_mapping_info[dicts["DrugID"]]
-                and "chembi_id" not in drug_mapping_info[dicts["DrugID"]]
+                "pubchem.compound" in drug_mapping_info[dicts["DrugID"]]
+                and "pubchem.compound" not in drug_mapping_info[dicts["DrugID"]]
             ):
-                subject_node = {"id": f"pubchem_cid:{drug_mapping_info[dicts['DrugID']]['pubchem_cid'][0]}"}
+                subject_node = {"id": f"PUBCHEM.COMPOUND:{drug_mapping_info[dicts['DrugID']]['cid'][0]}"}
             else:
                 subject_node = {"id": f"ttd_drug_id:{dicts['DrugID']}"}
             subject_node.update(drug_mapping_info[dicts["DrugID"]])
@@ -401,17 +401,20 @@ def load_drug_dis_data(file_path):
         association = {"predicate": "biolink:treats", "clinical_trial": trial_list}
 
         object_node = {
-            "id": icd11,
+            "id": f"ICD11:{icd11}",
             "icd11": icd11,
             "name": association["clinical_trial"][0]["disease"],
             "type": "biolink:Disease",
         }
 
         if drug_id in drug_mapping_info:
-            if "chembi_id" in drug_mapping_info[drug_id]:
-                subject_node = {"id": f"chembi_id:{drug_mapping_info[drug_id]['chembi_id'][0]}"}
-            elif "pubchem_cid" in drug_mapping_info[drug_id] and "chembi_id" not in drug_mapping_info[drug_id]:
-                subject_node = {"id": f"pubchem_cid:{drug_mapping_info[drug_id]['pubchem_cid'][0]}"}
+            if "chebi" in drug_mapping_info[drug_id]:
+                subject_node = {"id": f"CHEBI:{drug_mapping_info[drug_id]['chebi'][0]}"}
+            elif (
+                "pubchem.compound" in drug_mapping_info[drug_id]
+                and "pubchem.compound" not in drug_mapping_info[drug_id]
+            ):
+                subject_node = {"id": f"PUBCHEM.COMPOUND:{drug_mapping_info[drug_id]['pubchem.compound'][0]}"}
             else:
                 subject_node = {"id": f"ttd_drug_id:{drug_id}"}
             subject_node.update(drug_mapping_info[drug_id])
@@ -478,7 +481,7 @@ def load_target_dis_data(file_path):
 
                 if targ_id and targ_name:
                     dict1 = {
-                        "_id": f"{targ_id}_{targ_name}_{icd11}",
+                        "_id": f"{targ_id}__{targ_name}__{icd11}",
                         "status": line[2].split("\t")[0],
                         "disease": disease_name,
                     }
@@ -491,13 +494,13 @@ def load_target_dis_data(file_path):
         merged_dict[d["_id"]].append({"status": d["status"], "disease": d["disease"]})
 
     for _id, trial_list in merged_dict.items():
-        targ_id = _id.split("_")[0]
-        targ_name = _id.split("_")[1]
-        icd11 = _id.split("_")[2]
+        targ_id = _id.split("__")[0]
+        targ_name = _id.split("__")[1]
+        icd11 = _id.split("__")[2]
 
         if targ_id in target_info_d:
-            if "uniprot" in target_info_d[targ_id]:
-                subject_node = {"id": f"uniprot:{target_info_d[targ_id].get('uniprot')[0]}"}
+            if "uniprotkb" in target_info_d[targ_id]:
+                subject_node = {"id": f"UniProtKB:{target_info_d[targ_id].get('uniprotkb')[0]}"}
             else:
                 subject_node = {"id": f"ttd_target_id:{targ_id}"}
             subject_node.update(target_info_d[targ_id])
@@ -512,7 +515,7 @@ def load_target_dis_data(file_path):
         }
 
         object_node = {
-            "id": icd11,
+            "id": f"ICD11:{icd11}",
             "icd11": icd11,
             "name": association["clinical_trial"][0]["disease"],
             "type": "biolink:Disease",
@@ -558,7 +561,7 @@ def load_biomarker_dis_data(file_path):
     for line in tabfile_feeder(biomarker_file, header=16):
         if line:
             subject_node = {
-                "id": line[3].split(":")[1].strip(),
+                "id": f"ICD11:{line[3].split(':')[1].strip()}",
                 "name": line[2],
                 "type": "biolink:Disease",
             }
@@ -629,14 +632,14 @@ def load_drug_target_act(file_path):
     subject_node = {}
 
     for line in tabfile_feeder(activity_file, header=1):
-        subject_node["id"] = f"pubchem_cid:{line[2]}"
-        subject_node["pubchem_cid"] = line[2]
+        subject_node["id"] = f"PUBCHEM.COMPOUND:{line[2]}"
+        subject_node["pubchem.compound"] = line[2]
         subject_node["ttd_drug_id"] = line[1]
         subject_node["type"] = "biolink:Drug"
 
         if line[0] in target_info_d:
-            if "uniprot" in target_info_d[line[0]]:
-                object_node = {"id": f"uniprot:{target_info_d[line[0]].get('uniprot')[0]}"}
+            if "uniprotkb" in target_info_d[line[0]]:
+                object_node = {"id": f"UniProtKB:{target_info_d[line[0]].get('uniprotkb')[0]}"}
             else:
                 object_node = {"id": f"ttd_target_id:{line[0]}"}
             object_node.update(target_info_d[line[0]])
