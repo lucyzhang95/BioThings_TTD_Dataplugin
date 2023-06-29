@@ -2,7 +2,18 @@
 Data source: https://db.idrblab.net/ttd/full-data-download
 Version 8.1.01 (2021.11.08)
 
-05/31/23
+06/29/23
+
+## Summary
+|Entity| Count |
+|:--|:-----:|
+|Total records| 853055 |
+|Unmapped ttd records | 28,156 |
+|Object with prefix| 598,128 |
+|Object with umapped ttd prefix| 254,927 |
+|Subject with prefix| 824,899 |
+|Subject with unmapped ttd prefix| 29,638 |
+
 
 ## P1-01-TTD_target_download.txt
 | Entity | Count |
@@ -12,6 +23,8 @@ Version 8.1.01 (2021.11.08)
 | TARGTYPE | 4080 |
 | BIOCLASS | 2626 |
 
+- Uniprot ac labels: 3597 (str + list), 3851 (str)
+- Unique ac labels: 3448
 
 ## P1-05-Drug_disease.txt
 | Entity | Count |
