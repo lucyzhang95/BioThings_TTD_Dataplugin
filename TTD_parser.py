@@ -59,21 +59,24 @@ class UniprotJobIDs:
         :return: asyncio co-routine tasks
         """
         tasks = []
+        ac_l = []
         ac_info = self.get_uniprot_ac()
-        for ac_dict in ac_info:
-            if not isinstance(ac_dict["uniprot_ac"], list):
-                data = {"from": "UniProtKB_AC-ID", "to": "UniProtKB", "ids": ac_dict["uniprot_ac"]}
-                tasks.append(asyncio.create_task(session.post(f"{self.api_url}/idmapping/run", data=data)))
+        for ac_d in ac_info:
+            if isinstance(ac_d["uniprot_ac"], list):
+                for ac in ac_d["uniprot_ac"]:
+                    ac_l.append(ac)
             else:
-                for ac in ac_dict["uniprot_ac"]:
-                    data = {"from": "UniProtKB_AC-ID", "to": "UniProtKB", "ids": ac}
-                    tasks.append(asyncio.create_task(session.post(f"{self.api_url}/idmapping/run", data=data)))
+                ac_l.append(ac_d["uniprot_ac"])
+
+        ac_l = set(ac_l)
+        for ac in ac_l:
+            data = {"from": "UniProtKB_AC-ID", "to": "UniProtKB", "ids": ac}
+            tasks.append(asyncio.create_task(session.post(f"{self.api_url}/idmapping/run", data=data)))
         return tasks
 
     async def get_jobIds(self):
         """obtain uniprot jobIDs
         from "https://rest.uniprot.org/idmapping/run"
-
         """
         connector = aiohttp.TCPConnector(verify_ssl=False)
         async with aiohttp.ClientSession(connector=connector) as session:
@@ -122,7 +125,7 @@ class MappedUniprotKbs:
 
         :return: asyncio object contains list of {"uniprot_kb": "kb", "uniprot_ac": "ac"}
         """
-        connector = aiohttp.TCPConnector(verify_ssl=False)  # Force TCP connection to close every time when request
+        connector = aiohttp.TCPConnector(verify_ssl=False)
         async with aiohttp.ClientSession(
             trust_env=True, timeout=aiohttp.ClientTimeout(total=300), connector=connector
         ) as session:
