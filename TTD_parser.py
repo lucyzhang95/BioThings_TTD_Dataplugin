@@ -5,8 +5,8 @@ from collections import defaultdict
 
 import aiohttp
 import aiohttp.client_exceptions
-from biothings.utils.dataload import tabfile_feeder
 import biothings_client
+from biothings.utils.dataload import tabfile_feeder
 
 
 class UniprotJobIDs:
@@ -128,11 +128,11 @@ class MappedUniprotKbs:
         """
         connector = aiohttp.TCPConnector(verify_ssl=False)
         async with aiohttp.ClientSession(
-                trust_env=True, timeout=aiohttp.ClientTimeout(total=300), connector=connector
+            trust_env=True, timeout=aiohttp.ClientTimeout(total=300), connector=connector
         ) as session:
             tasks = self.get_jobId_mapping_link(session)
             batch_size = 10
-            task_batches = [tasks[i: i + batch_size] for i in range(0, len(tasks), batch_size)]
+            task_batches = [tasks[i : i + batch_size] for i in range(0, len(tasks), batch_size)]
 
             for batch in task_batches:
                 batch_result = await asyncio.gather(*batch)
@@ -354,8 +354,8 @@ def load_drug_target(file_path):
             if "chebi" in drug_mapping_info[dicts["DrugID"]]:
                 subject_node = {"id": f"CHEBI:{drug_mapping_info[dicts['DrugID']]['chebi']}"}
             elif (
-                    "pubchem_compound" in drug_mapping_info[dicts["DrugID"]]
-                    and "pubchem_compound" not in drug_mapping_info[dicts["DrugID"]]
+                "pubchem_compound" in drug_mapping_info[dicts["DrugID"]]
+                and "pubchem_compound" not in drug_mapping_info[dicts["DrugID"]]
             ):
                 subject_node = {"id": f"PUBCHEM.COMPOUND:{drug_mapping_info[dicts['DrugID']]['cid'][0]}"}
             else:
@@ -474,8 +474,8 @@ def load_drug_dis_data(file_path):
             if "chebi" in drug_mapping_info[drug_id]:
                 subject_node = {"id": f"CHEBI:{drug_mapping_info[drug_id]['chebi']}"}
             elif (
-                    "pubchem_compound" in drug_mapping_info[drug_id]
-                    and "pubchem_compound" not in drug_mapping_info[drug_id]
+                "pubchem_compound" in drug_mapping_info[drug_id]
+                and "pubchem_compound" not in drug_mapping_info[drug_id]
             ):
                 subject_node = {"id": f"PUBCHEM.COMPOUND:{drug_mapping_info[drug_id]['pubchem_compound'][0]}"}
             else:
@@ -623,7 +623,7 @@ def load_biomarker_dis_data(file_path):
                 "type": "biolink:Disease",
             }
 
-            icd11 = line[3].split(':')[1].strip()
+            icd11 = line[3].split(":")[1].strip()
             for d in icd11_mondo:
                 if icd11 in d:
                     subject_node["id"] = d[icd11]
