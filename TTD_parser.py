@@ -6,6 +6,7 @@ from collections import defaultdict
 import aiohttp
 import aiohttp.client_exceptions
 from biothings.utils.dataload import tabfile_feeder
+import biothings_client
 
 
 class UniprotJobIDs:
@@ -127,25 +128,26 @@ class MappedUniprotKbs:
         """
         connector = aiohttp.TCPConnector(verify_ssl=False)
         async with aiohttp.ClientSession(
-            trust_env=True, timeout=aiohttp.ClientTimeout(total=300), connector=connector
+                trust_env=True, timeout=aiohttp.ClientTimeout(total=300), connector=connector
         ) as session:
             tasks = self.get_jobId_mapping_link(session)
             batch_size = 10
-            task_batches = [tasks[i : i + batch_size] for i in range(0, len(tasks), batch_size)]
+            task_batches = [tasks[i: i + batch_size] for i in range(0, len(tasks), batch_size)]
 
             for batch in task_batches:
                 batch_result = await asyncio.gather(*batch)
                 for response in batch_result:
                     try:
                         results = await response.json()
-                        if results.get("messages"):
-                            print(f"{results.get('url')} results cannot be found on uniprot.")
+                        if "messages" in results:
+                            print(f"{results['url']} results cannot be found on uniprot.")
                         else:
                             try:
-                                ac = results.get("results")[0]["from"]
-                                kb = results.get("results")[0]["to"]["primaryAccession"]
-                                mapped_dict = {"uniprot_kb": kb, "uniprot_ac": ac}
-                                self.uniprot_ac_kb.append(mapped_dict)
+                                if results["results"]:
+                                    ac = results.get("results")[0]["from"]
+                                    kb = results.get("results")[0]["to"]["primaryAccession"]
+                                    mapped_dict = {"uniprot_kb": kb, "uniprot_ac": ac}
+                                    self.uniprot_ac_kb.append(mapped_dict)
                             except IndexError:
                                 print(f"{results.get('failedIds')} cannot be found on uniprot.")
                     except (aiohttp.client_exceptions.ClientOSError, aiohttp.client_exceptions.ServerDisconnectedError):
@@ -259,14 +261,63 @@ def mapping_drug_id(file_path):
                 drug_mapping_info = {"ttd_drug_id": line[2]}
             elif line[1].startswith("PUBCHCID"):
                 if ";" in line[2]:
-                    drug_mapping_info["pubchem.compound"] = [cid.strip() for cid in line[2].split(";")]
+                    drug_mapping_info["pubchem_compound"] = [cid.strip() for cid in line[2].split(";")]
                 else:
-                    drug_mapping_info["pubchem.compound"] = line[2]
+                    drug_mapping_info["pubchem_compound"] = line[2]
             elif line[1].startswith("ChEBI_ID"):
                 drug_mapping_info["chebi"] = line[2].split(":")[1]
 
             if drug_mapping_info:
                 yield drug_mapping_info
+
+
+def cleanup_icds(line, icd_prefix):
+    """clean up the icds data for loading biomarker_dis_data
+
+    Keyword arguments:
+    dict: dictionary in biomarker_dis_data
+    icd_key: "ICD11", "ICD10", "ICD9"
+    icd_prefix:  "ICD-11", "ICD-10", "ICD-9"
+    """
+    if line != "." and line.startswith(icd_prefix):
+        icd = line.split(":")[1].strip()
+        if icd.find(",") != -1:
+            icd = [item.strip() for item in icd.split(",")]
+            return icd
+        else:
+            return icd
+
+
+def get_icd9_11_mondo_mapping(file_path):
+    biomarker_file = os.path.join(file_path, "P1-08-Biomarker_disease.txt")
+    assert os.path.exists(biomarker_file)
+
+    icd9_11 = []
+    mondo_icd9_dis = biothings_client.get_client("disease")
+
+    for line in tabfile_feeder(biomarker_file, header=16):
+        if line:
+            icd9 = cleanup_icds(line[5], "ICD-9:")
+            icd11 = cleanup_icds(line[3], "ICD-11:")
+            if icd9 and icd11:
+                if isinstance(icd9, list):
+                    for item in icd9:
+                        icd9_11.append((icd11, item))
+                else:
+                    icd9_11.append((icd11, icd9))
+
+    icd9_11 = list(set(icd9_11))
+    icd9s = [icd9[1] for icd9 in icd9_11]
+
+    icd9_mondo = mondo_icd9_dis.querymany(icd9s, scopes="mondo.xrefs.icd9", fields="mondo.mondo")
+    icd9_mondo = {mondo_d["query"]: mondo_d["_id"] for mondo_d in icd9_mondo if "notfound" not in mondo_d}
+
+    icd11_mondo = {}
+    for icd11, icd9 in icd9_11:
+        if icd11 not in icd11_mondo and icd9 in icd9_mondo:
+            icd11_mondo[icd11] = icd9_mondo[icd9]
+
+    yield icd11_mondo
 
 
 def load_drug_target(file_path):
@@ -301,10 +352,10 @@ def load_drug_target(file_path):
 
         if dicts["DrugID"] in drug_mapping_info:
             if "chebi" in drug_mapping_info[dicts["DrugID"]]:
-                subject_node = {"id": f"CHEBI:{drug_mapping_info[dicts['DrugID']]['chebi'][0]}"}
+                subject_node = {"id": f"CHEBI:{drug_mapping_info[dicts['DrugID']]['chebi']}"}
             elif (
-                "pubchem.compound" in drug_mapping_info[dicts["DrugID"]]
-                and "pubchem.compound" not in drug_mapping_info[dicts["DrugID"]]
+                    "pubchem_compound" in drug_mapping_info[dicts["DrugID"]]
+                    and "pubchem_compound" not in drug_mapping_info[dicts["DrugID"]]
             ):
                 subject_node = {"id": f"PUBCHEM.COMPOUND:{drug_mapping_info[dicts['DrugID']]['cid'][0]}"}
             else:
@@ -358,6 +409,10 @@ def load_drug_dis_data(file_path):
     # dictionary contains drug chembi_id and pubchem_cid info
     drug_mapping_info = {d["ttd_drug_id"]: d for d in mapping_drug_id(file_path)}
 
+    # To make use of the icd11 and mondo mapping must put the obj dictionary into a list
+    # Or it will only iterate once not all dictionary keys
+    icd11_mondo = [d for d in get_icd9_11_mondo_mapping(file_path)]
+
     drug_dis_list = []
     all_output_l = []
 
@@ -365,7 +420,7 @@ def load_drug_dis_data(file_path):
     drug_name = None
 
     for line in tabfile_feeder(drug_dis_file, header=22):
-        # data file has empty lines
+        # skip the empty lines in input data file
         if line != ["", "", "", "", ""]:
             if line[0] == "TTDDRUID":
                 drug_id = line[1]
@@ -401,20 +456,28 @@ def load_drug_dis_data(file_path):
         association = {"predicate": "biolink:treats", "clinical_trial": trial_list}
 
         object_node = {
-            "id": f"ICD11:{icd11}",
+            "id": None,
             "icd11": icd11,
             "name": association["clinical_trial"][0]["disease"],
             "type": "biolink:Disease",
         }
 
+        for d in icd11_mondo:
+            if icd11 in d:
+                object_node["id"] = d[icd11]
+                object_node["mondo"] = d[icd11].split(":")[1]
+
+        if object_node["id"] is None:
+            object_node["id"] = f"ICD11:{icd11}"
+
         if drug_id in drug_mapping_info:
             if "chebi" in drug_mapping_info[drug_id]:
-                subject_node = {"id": f"CHEBI:{drug_mapping_info[drug_id]['chebi'][0]}"}
+                subject_node = {"id": f"CHEBI:{drug_mapping_info[drug_id]['chebi']}"}
             elif (
-                "pubchem.compound" in drug_mapping_info[drug_id]
-                and "pubchem.compound" not in drug_mapping_info[drug_id]
+                    "pubchem_compound" in drug_mapping_info[drug_id]
+                    and "pubchem_compound" not in drug_mapping_info[drug_id]
             ):
-                subject_node = {"id": f"PUBCHEM.COMPOUND:{drug_mapping_info[drug_id]['pubchem.compound'][0]}"}
+                subject_node = {"id": f"PUBCHEM.COMPOUND:{drug_mapping_info[drug_id]['pubchem_compound'][0]}"}
             else:
                 subject_node = {"id": f"ttd_drug_id:{drug_id}"}
             subject_node.update(drug_mapping_info[drug_id])
@@ -424,7 +487,7 @@ def load_drug_dis_data(file_path):
             subject_node = {"id": f"ttd_drug_id:{drug_id}", "type": "biolink:Drug"}
 
         output_dict = {
-            "_id": f"{subject_node['id'].split(':')[1]}_treats_{icd11}",
+            "_id": f"{subject_node['id'].split(':')[1]}_treats_{object_node['id'].split(':')[1]}",
             "association": association,
             "object": object_node,
             "subject": subject_node,
@@ -463,6 +526,7 @@ def load_target_dis_data(file_path):
     assert os.path.exists(target_dis_file)
 
     target_info_d = {d["ttd_target_id"]: d for d in get_target_info(file_path)}
+    icd11_mondo = [d for d in get_icd9_11_mondo_mapping(file_path)]
 
     targ_dis_list = []
 
@@ -515,13 +579,21 @@ def load_target_dis_data(file_path):
         }
 
         object_node = {
-            "id": f"ICD11:{icd11}",
+            "id": None,
             "icd11": icd11,
             "name": association["clinical_trial"][0]["disease"],
             "type": "biolink:Disease",
         }
 
-        _id = f"{subject_node['id'].split(':')[1]}_target_for_{icd11}"
+        for d in icd11_mondo:
+            if icd11 in d:
+                object_node["id"] = d[icd11]
+                object_node["mondo"] = d[icd11].split(":")[1]
+
+        if object_node["id"] is None:
+            object_node["id"] = f"ICD11:{icd11}"
+
+        _id = f"{subject_node['id'].split(':')[1]}_target_for_{object_node['id'].split(':')[1]}"
 
         output_dict = {
             "_id": _id,
@@ -530,23 +602,6 @@ def load_target_dis_data(file_path):
             "subject": subject_node,
         }
         yield output_dict
-
-
-def cleanup_icds(line, icd_prefix):
-    """clean up the icds data for loading biomarker_dis_data
-
-    Keyword arguments:
-    dict: dictionary in biomarker_dis_data
-    icd_key: "ICD11", "ICD10", "ICD9"
-    icd_prefix:  "ICD-11", "ICD-10", "ICD-9"
-    """
-    if line != "." and line.startswith(icd_prefix):
-        icd = line.split(":")[1].strip()
-        if icd.find(",") != -1:
-            icd = [item.strip() for item in icd.split(",")]
-            return icd
-        else:
-            return icd
 
 
 def load_biomarker_dis_data(file_path):
@@ -558,13 +613,24 @@ def load_biomarker_dis_data(file_path):
     biomarker_file = os.path.join(file_path, "P1-08-Biomarker_disease.txt")
     assert os.path.exists(biomarker_file)
 
+    icd11_mondo = [d for d in get_icd9_11_mondo_mapping(file_path)]
+
     for line in tabfile_feeder(biomarker_file, header=16):
         if line:
             subject_node = {
-                "id": f"ICD11:{line[3].split(':')[1].strip()}",
+                "id": None,
                 "name": line[2],
                 "type": "biolink:Disease",
             }
+
+            icd11 = line[3].split(':')[1].strip()
+            for d in icd11_mondo:
+                if icd11 in d:
+                    subject_node["id"] = d[icd11]
+                    subject_node["mondo"] = d[icd11].split(":")[1]
+
+                if subject_node["id"] is None:
+                    subject_node["id"] = f"ICD11:{icd11}"
 
             icd_group = [
                 (line[3], "ICD-11:"),
@@ -582,7 +648,7 @@ def load_biomarker_dis_data(file_path):
             object_node = {"id": line[0], "type": "biolink:Biomarker"}
 
             biomarker_name = line[1]
-            _id = f"{line[0]}_biomarker_for_{subject_node['id']}"
+            _id = f"{line[0]}_biomarker_for_{subject_node['id'].split(':')[1]}"
 
             pattern = r"^(.*\(.*?)(.*)$"
             if "," not in biomarker_name:
@@ -633,7 +699,7 @@ def load_drug_target_act(file_path):
 
     for line in tabfile_feeder(activity_file, header=1):
         subject_node["id"] = f"PUBCHEM.COMPOUND:{line[2]}"
-        subject_node["pubchem.compound"] = line[2]
+        subject_node["pubchem_compound"] = line[2]
         subject_node["ttd_drug_id"] = line[1]
         subject_node["type"] = "biolink:Drug"
 
