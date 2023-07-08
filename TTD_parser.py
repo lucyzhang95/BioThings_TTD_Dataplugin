@@ -289,6 +289,13 @@ def cleanup_icds(line, icd_prefix):
 
 
 def get_icd9_11_mondo_mapping(file_path):
+    """map the icd9 to icd11 and mondo disease id
+    using the input source file P1-08-Biomarker_disease.txt
+
+    Keyword arguments:
+    :param file_path: directory stores P1-08-Biomarker_disease.txt
+    :return: dictionary with entire {icd11:mondo} ~ 43 key-value pairs
+    """
     biomarker_file = os.path.join(file_path, "P1-08-Biomarker_disease.txt")
     assert os.path.exists(biomarker_file)
 
@@ -364,10 +371,10 @@ def load_drug_target(file_path):
             subject_node["type"] = "biolink:Drug"
 
         else:
-            subject_node = {"id": f"ttd_drug_id:{dicts['DrugID']}", "type": "biolink:Drug"}
+            subject_node = {"id": f"ttd_drug_id:{dicts['DrugID']}", "type": "biolink:SmallMolecule"}
 
-        _id = f"{subject_node['id'].split(':')[1]}_associated_with_{object_node['id'].split(':')[1]}"
-        association = {"predicate": "biolink:associated_with", "trial_status": dicts["Highest_status"].lower()}
+        _id = f"{subject_node['id'].split(':')[1]}_interacts_with_{object_node['id'].split(':')[1]}"
+        association = {"predicate": "biolink:interacts_with", "trial_status": dicts["Highest_status"].lower()}
         output_dict = {"_id": _id, "association": association, "object": object_node, "subject": subject_node}
 
         drug_moa = dicts["MOA"]
@@ -379,8 +386,8 @@ def load_drug_target(file_path):
     """
     Remove duplicates with same _id (same pubchem_cid/chembi_id but different ttd_drug_id)
     For example:
-    {'_id': '445455_associated_with_P13631', 'subject':{'ttd_drug_id': 'D0M3LK', 'pubchem_cid': '445455'}}
-    {'_id': '445455_associated_with_P13631' 'subject':{'ttd_drug_id': 'D0MC3J', 'pubchem_cid': '445455'}}
+    {'_id': '445455_interacts_with_P13631', 'subject':{'ttd_drug_id': 'D0M3LK', 'pubchem_cid': '445455'}}
+    {'_id': '445455_interacts_with_P13631' 'subject':{'ttd_drug_id': 'D0MC3J', 'pubchem_cid': '445455'}}
     Only keep the first one
     """
 
@@ -484,7 +491,7 @@ def load_drug_dis_data(file_path):
             subject_node["name"] = drug_name
             subject_node["type"] = "biolink:Drug"
         else:
-            subject_node = {"id": f"ttd_drug_id:{drug_id}", "type": "biolink:Drug"}
+            subject_node = {"id": f"ttd_drug_id:{drug_id}", "type": "biolink:SmallMolecule"}
 
         output_dict = {
             "_id": f"{subject_node['id'].split(':')[1]}_treats_{object_node['id'].split(':')[1]}",
@@ -701,7 +708,7 @@ def load_drug_target_act(file_path):
         subject_node["id"] = f"PUBCHEM.COMPOUND:{line[2]}"
         subject_node["pubchem_compound"] = line[2]
         subject_node["ttd_drug_id"] = line[1]
-        subject_node["type"] = "biolink:Drug"
+        subject_node["type"] = "biolink:SmallMolecule"
 
         if line[0] in target_info_d:
             if "uniprotkb" in target_info_d[line[0]]:
@@ -714,8 +721,8 @@ def load_drug_target_act(file_path):
             object_node = {"id": f"ttd_target_id:{line[0]}", "type": "biolink:Protein"}
 
         if subject_node and object_node:
-            _id = f"{subject_node['id'].split(':')[1]}_associated_with_{object_node['id'].split(':')[1]}"
-            association = {"predicate": "biolink:associated_with"}
+            _id = f"{subject_node['id'].split(':')[1]}_interacts_with_{object_node['id'].split(':')[1]}"
+            association = {"predicate": "biolink:interacts_with"}
 
             pattern = re.match(r"(IC50|Ki|EC50)\s+(.+)", line[3])
             if pattern:
