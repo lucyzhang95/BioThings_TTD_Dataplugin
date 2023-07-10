@@ -368,7 +368,13 @@ def load_drug_target(file_path):
                 "pubchem_compound" in drug_mapping_info[dicts["DrugID"]]
                 and "chebi" not in drug_mapping_info[dicts["DrugID"]]
             ):
-                subject_node = {"id": f"PUBCHEM.COMPOUND:{drug_mapping_info[dicts['DrugID']]['pubchem_compound']}"}
+                if isinstance(drug_mapping_info[dicts["DrugID"]]["pubchem_compound"], list):
+                    subject_node = {
+                        "id": f"PUBCHEM.COMPOUND:{drug_mapping_info[dicts['DrugID']]['pubchem_compound'][0]}"
+                    }
+                else:
+                    subject_node = {"id": f"PUBCHEM.COMPOUND:{drug_mapping_info[dicts['DrugID']]['pubchem_compound']}"}
+
             else:
                 subject_node = {"id": f"ttd_drug_id:{dicts['DrugID']}"}
             subject_node.update(drug_mapping_info[dicts["DrugID"]])
@@ -489,7 +495,10 @@ def load_drug_dis_data(file_path):
             if "chebi" in drug_mapping_info[drug_id]:
                 subject_node = {"id": f"CHEBI:{drug_mapping_info[drug_id]['chebi']}"}
             elif "pubchem_compound" in drug_mapping_info[drug_id] and "chebi" not in drug_mapping_info[drug_id]:
-                subject_node = {"id": f"PUBCHEM.COMPOUND:{drug_mapping_info[drug_id]['pubchem_compound']}"}
+                if isinstance(drug_mapping_info[drug_id]["pubchem_compound"], list):
+                    subject_node = {"id": f"PUBCHEM.COMPOUND:{drug_mapping_info[drug_id]['pubchem_compound'][0]}"}
+                else:
+                    subject_node = {"id": f"PUBCHEM.COMPOUND:{drug_mapping_info[drug_id]['pubchem_compound']}"}
             else:
                 subject_node = {"id": f"ttd_drug_id:{drug_id}"}
             subject_node.update(drug_mapping_info[drug_id])
