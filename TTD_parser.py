@@ -355,23 +355,31 @@ def load_drug_target(file_path):
             object_node.update(target_info_d[dicts["TargetID"]])
             object_node["type"] = "biolink:Protein"
         else:
-            object_node = {"id": f"ttd_target_id:{dicts['TargetID']}", "type": "biolink:Protein"}
+            object_node = {
+                "id": f"ttd_target_id:{dicts['TargetID']}",
+                "ttd_target_id": dicts["TargetID"],
+                "type": "biolink:Protein",
+            }
 
         if dicts["DrugID"] in drug_mapping_info:
             if "chebi" in drug_mapping_info[dicts["DrugID"]]:
                 subject_node = {"id": f"CHEBI:{drug_mapping_info[dicts['DrugID']]['chebi']}"}
             elif (
                 "pubchem_compound" in drug_mapping_info[dicts["DrugID"]]
-                and "pubchem_compound" not in drug_mapping_info[dicts["DrugID"]]
+                and "chebi" not in drug_mapping_info[dicts["DrugID"]]
             ):
-                subject_node = {"id": f"PUBCHEM.COMPOUND:{drug_mapping_info[dicts['DrugID']]['cid'][0]}"}
+                subject_node = {"id": f"PUBCHEM.COMPOUND:{drug_mapping_info[dicts['DrugID']]['pubchem_compound']}"}
             else:
                 subject_node = {"id": f"ttd_drug_id:{dicts['DrugID']}"}
             subject_node.update(drug_mapping_info[dicts["DrugID"]])
-            subject_node["type"] = "biolink:Drug"
+            subject_node["type"] = "biolink:SmallMolecule"
 
         else:
-            subject_node = {"id": f"ttd_drug_id:{dicts['DrugID']}", "type": "biolink:SmallMolecule"}
+            subject_node = {
+                "id": f"ttd_drug_id:{dicts['DrugID']}",
+                "ttd_drug_id": dicts["DrugID"],
+                "type": "biolink:SmallMolecule",
+            }
 
         _id = f"{subject_node['id'].split(':')[1]}_interacts_with_{object_node['id'].split(':')[1]}"
         association = {"predicate": "biolink:interacts_with", "trial_status": dicts["Highest_status"].lower()}
@@ -480,18 +488,15 @@ def load_drug_dis_data(file_path):
         if drug_id in drug_mapping_info:
             if "chebi" in drug_mapping_info[drug_id]:
                 subject_node = {"id": f"CHEBI:{drug_mapping_info[drug_id]['chebi']}"}
-            elif (
-                "pubchem_compound" in drug_mapping_info[drug_id]
-                and "pubchem_compound" not in drug_mapping_info[drug_id]
-            ):
-                subject_node = {"id": f"PUBCHEM.COMPOUND:{drug_mapping_info[drug_id]['pubchem_compound'][0]}"}
+            elif "pubchem_compound" in drug_mapping_info[drug_id] and "chebi" not in drug_mapping_info[drug_id]:
+                subject_node = {"id": f"PUBCHEM.COMPOUND:{drug_mapping_info[drug_id]['pubchem_compound']}"}
             else:
                 subject_node = {"id": f"ttd_drug_id:{drug_id}"}
             subject_node.update(drug_mapping_info[drug_id])
             subject_node["name"] = drug_name
-            subject_node["type"] = "biolink:Drug"
+            subject_node["type"] = "biolink:SmallMolecule"
         else:
-            subject_node = {"id": f"ttd_drug_id:{drug_id}", "type": "biolink:SmallMolecule"}
+            subject_node = {"id": f"ttd_drug_id:{drug_id}", "ttd_drug_id": drug_id, "type": "biolink:SmallMolecule"}
 
         output_dict = {
             "_id": f"{subject_node['id'].split(':')[1]}_treats_{object_node['id'].split(':')[1]}",
@@ -578,7 +583,12 @@ def load_target_dis_data(file_path):
             subject_node["name"] = targ_name
             subject_node["type"] = "biolink:Protein"
         else:
-            subject_node = {"id": f"ttd_target_id:{targ_id}", "name": targ_name, "type": "biolink:Protein"}
+            subject_node = {
+                "id": f"ttd_target_id:{targ_id}",
+                "ttd_target_id": targ_id,
+                "name": targ_name,
+                "type": "biolink:Protein",
+            }
 
         association = {
             "predicate": "biolink:target_for",
@@ -652,7 +662,11 @@ def load_biomarker_dis_data(file_path):
 
             new_subject_node = {k: v for k, v in subject_node.items() if v is not None}
 
-            object_node = {"id": line[0], "type": "biolink:Biomarker"}
+            object_node = {
+                "id": f"ttd_biomarker_id:{line[0]}",
+                "ttd_biomarker_id": line[0],
+                "type": "biolink:Biomarker",
+            }
 
             biomarker_name = line[1]
             _id = f"{line[0]}_biomarker_for_{subject_node['id'].split(':')[1]}"
@@ -718,7 +732,7 @@ def load_drug_target_act(file_path):
             object_node.update(target_info_d[line[0]])
             object_node["type"] = "biolink:Protein"
         else:
-            object_node = {"id": f"ttd_target_id:{line[0]}", "type": "biolink:Protein"}
+            object_node = {"id": f"ttd_target_id:{line[0]}", "ttd_target_id": line[0], "type": "biolink:Protein"}
 
         if subject_node and object_node:
             _id = f"{subject_node['id'].split(':')[1]}_interacts_with_{object_node['id'].split(':')[1]}"
