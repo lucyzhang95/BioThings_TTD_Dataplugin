@@ -12,8 +12,9 @@ Last Updated: 07/10/23
 |Total records| 876,675 |
 
 - Input source file has 890,161 records
-- Parser output has 887,888 records with duplicates.
-- 11,213 records are removed due to duplicated _id (mostly from records with the same chebi/pubchem_cid and UniProtKB)
+- The initial parser records was 889,851 (890,161 - 889,851 = 310 where 17 and 293 duplicates are removed from drug-disease and target-disease)
+- Final parser output has 887,888 records with duplicates.
+- 11,213 records are removed from final parser output due to duplicated _id (mostly from records with the same chebi/pubchem_cid and UniProtKB)
 
 <details><summary>click to expand for biolink prefix and predicate</summary>
   
