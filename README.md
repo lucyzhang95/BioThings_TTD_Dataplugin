@@ -55,7 +55,7 @@ Last Updated: 07/10/23
 <br>
 
 ## P1-05-Drug_disease.txt
-- parser function: load_drug_dis_data()
+- parser function: load_drug_dis_data(file_path)
 
 |Drug-Disease (treats))| subject (SmallMolecule) | Number of records | object (Disease) | Number of records |
 |:--------------------------:|:-----------------------:|:-----------------:|:----------------:|:-----------------:|
@@ -84,7 +84,7 @@ Last Updated: 07/10/23
 
 
 ## P1-06-Target_disease.txt
-- parser function: load_target_dis_data()
+- parser function: load_drug_target(file_path)
 
 |Target-Disease (target_for))| subject (Protein) | Number of records | object (Disease) | Number of records |
 |:--------------------------:|:-----------------------:|:-----------------:|:----------------:|:-----------------:|
@@ -109,7 +109,7 @@ Last Updated: 07/10/23
 <br>
 
 ## P1-07-Drug-TargetMapping.xlsx
-- parser function: load_drug_target()
+- parser function: load_drug_target(file_path)
 
 |Drug-Target (interacts_with)| subject (SmallMolecule) | Number of records | object (Protein) | Number of records |
 |:--------------------------:|:-----------------------:|:-----------------:|:----------------:|:-----------------:|
@@ -135,7 +135,7 @@ Last Updated: 07/10/23
 <br>
 
 ## P1-08-Biomarker_disease.txt
-- parser function: load_biomarker_dis_data()
+- parser function: load_biomarker_dis_data(file_path)
 
 |Biomarker-Disease (biomarker_for | subject (Disease) | Number of records | object  (Biomarker) | Number of records |
 |:--------------------------:|:-----------------------:|:-----------------:|:----------------:|:-----------------:|
@@ -161,7 +161,7 @@ Last Updated: 07/10/23
 <br>
 
 ## P1-09-Target_compound_activity.txt
-- parser function: load_drug_target_act()
+- parser function: load_drug_target_act(file_path)
 
 |Drug-Target_Activity (interacts_with)| subject (SmallMolecule) | Number of records | object (Protein) | Number of records |
 |:--------------------------:|:-----------------------:|:-----------------:|:----------------:|:-----------------:|
