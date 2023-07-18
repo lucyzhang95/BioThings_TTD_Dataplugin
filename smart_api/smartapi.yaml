@@ -18,10 +18,10 @@ info:
     biolink-version: "3.5.0"
 servers:
 - description: Encrypted Production server
-  url: https://biothings.ncats.io/ttd
+  url: https://biothings.ci.transltr.io/ttd
   x-maturity: production
 - description: Production server
-  url: https://biothings.ncats.io/ttd
+  url: https://biothings.ci.transltr.io/ttd
   x-maturity: production
 tags:
 - name: gene
