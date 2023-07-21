@@ -80,11 +80,13 @@ class UniprotJobIDs:
         from "https://rest.uniprot.org/idmapping/run"
         """
         connector = aiohttp.TCPConnector(verify_ssl=False)
-        async with aiohttp.ClientSession(connector=connector) as session:
-            tasks = self.get_tasks(session)
-            responses = await asyncio.gather(*tasks)
-            for response in responses:
-                self.job_ids.append(await response.json())
+        semaphore = asyncio.Semaphore(100)  # limit co-current tasks to 100
+        async with semaphore:
+            async with aiohttp.ClientSession(connector=connector) as session:
+                tasks = self.get_tasks(session)
+                responses = await asyncio.gather(*tasks)
+                for response in responses:
+                    self.job_ids.append(await response.json())
 
     def run_async_task_job_ids(self):
         """execute get_jobIDs() when called and obtain jobID json output
@@ -127,31 +129,34 @@ class MappedUniprotKbs:
         :return: asyncio object contains list of {"uniprot_kb": "kb", "uniprot_ac": "ac"}
         """
         connector = aiohttp.TCPConnector(verify_ssl=False)
-        async with aiohttp.ClientSession(
-            trust_env=True, timeout=aiohttp.ClientTimeout(total=300), connector=connector
-        ) as session:
-            tasks = self.get_jobId_mapping_link(session)
-            batch_size = 10
-            task_batches = [tasks[i : i + batch_size] for i in range(0, len(tasks), batch_size)]
+        semaphore = asyncio.Semaphore(100)  # limit co-current tasks to 100
+        async with semaphore:
+            async with aiohttp.ClientSession(
+                    trust_env=True, timeout=aiohttp.ClientTimeout(total=300), connector=connector
+            ) as session:
+                tasks = self.get_jobId_mapping_link(session)
+                batch_size = 10
+                task_batches = [tasks[i: i + batch_size] for i in range(0, len(tasks), batch_size)]
 
-            for batch in task_batches:
-                batch_result = await asyncio.gather(*batch)
-                for response in batch_result:
-                    try:
-                        results = await response.json()
-                        if "messages" in results:
-                            print(f"{results['url']} results cannot be found on uniprot.")
-                        else:
-                            try:
-                                if results["results"]:
-                                    ac = results.get("results")[0]["from"]
-                                    kb = results.get("results")[0]["to"]["primaryAccession"]
-                                    mapped_dict = {"uniprot_kb": kb, "uniprot_ac": ac}
-                                    self.uniprot_ac_kb.append(mapped_dict)
-                            except IndexError:
-                                print(f"{results.get('failedIds')} cannot be found on uniprot.")
-                    except (aiohttp.client_exceptions.ClientOSError, aiohttp.client_exceptions.ServerDisconnectedError):
-                        await asyncio.sleep(5)  # To avoid ClientConnectorError: 443 [Operation timed out]
+                for batch in task_batches:
+                    batch_result = await asyncio.gather(*batch)
+                    for response in batch_result:
+                        try:
+                            results = await response.json()
+                            if "messages" in results:
+                                print(f"{results['url']} results cannot be found on uniprot.")
+                            else:
+                                try:
+                                    if results["results"]:
+                                        ac = results.get("results")[0]["from"]
+                                        kb = results.get("results")[0]["to"]["primaryAccession"]
+                                        mapped_dict = {"uniprot_kb": kb, "uniprot_ac": ac}
+                                        self.uniprot_ac_kb.append(mapped_dict)
+                                except IndexError:
+                                    print(f"{results.get('failedIds')} cannot be found on uniprot.")
+                        except (
+                        aiohttp.client_exceptions.ClientOSError, aiohttp.client_exceptions.ServerDisconnectedError):
+                            await asyncio.sleep(5)  # To avoid ClientConnectorError: 443 [Operation timed out]
 
 
 class UniprotMapping:
@@ -365,8 +370,8 @@ def load_drug_target(file_path):
             if "chebi" in drug_mapping_info[dicts["DrugID"]]:
                 subject_node = {"id": f"CHEBI:{drug_mapping_info[dicts['DrugID']]['chebi']}"}
             elif (
-                "pubchem_compound" in drug_mapping_info[dicts["DrugID"]]
-                and "chebi" not in drug_mapping_info[dicts["DrugID"]]
+                    "pubchem_compound" in drug_mapping_info[dicts["DrugID"]]
+                    and "chebi" not in drug_mapping_info[dicts["DrugID"]]
             ):
                 if isinstance(drug_mapping_info[dicts["DrugID"]]["pubchem_compound"], list):
                     subject_node = {
@@ -720,10 +725,17 @@ def load_drug_target_act(file_path):
     Keyword arguments:
     file_path: directory stores P1-09-Target_compound_activity.txt file
     """
+    import pandas as pd
+
     activity_file = os.path.join(file_path, "P1-09-Target_compound_activity.txt")
     assert os.path.exists(activity_file)
 
+    drug_targ_file = os.path.join(file_path, "P1-07-Drug-TargetMapping.xlsx")
+    assert os.path.exists(drug_targ_file)
+    drug_target_data = pd.read_excel(drug_targ_file, engine="openpyxl").to_dict(orient="records")
+
     target_info_d = {d["ttd_target_id"]: d for d in get_target_info(file_path)}
+    drug_target_dict = {(dicts["TargetID"], dicts["DrugID"]): dicts for dicts in drug_target_data}
 
     subject_node = {}
 
@@ -747,11 +759,24 @@ def load_drug_target_act(file_path):
             _id = f"{subject_node['id'].split(':')[1]}_interacts_with_{object_node['id'].split(':')[1]}"
             association = {"predicate": "biolink:interacts_with"}
 
-            pattern = re.match(r"(IC50|Ki|EC50)\s+(.+)", line[3])
-            if pattern:
-                association[pattern.groups()[0].lower()] = pattern.groups()[1].replace(" ", "")
+            if (line[0], line[1]) in drug_target_dict:
+                for key, value in drug_target_dict.items():
+                    association["trial_status"] = value["Highest_status"].lower()
+                    if value["MOA"] != ".":
+                        association["moa"] = value["MOA"].lower()
+
+                    pattern = re.match(r"(IC50|Ki|EC50)\s+(.+)", line[3])
+                    if pattern:
+                        association[pattern.groups()[0].lower()] = pattern.groups()[1].replace(" ", "")
+                    else:
+                        print(f"{line[3]} pattern does not match.")
+
             else:
-                print(f"{line[3]} pattern does not match.")
+                pattern = re.match(r"(IC50|Ki|EC50)\s+(.+)", line[3])
+                if pattern:
+                    association[pattern.groups()[0].lower()] = pattern.groups()[1].replace(" ", "")
+                else:
+                    print(f"{line[3]} pattern does not match.")
 
             output_dict = {
                 "_id": _id,
@@ -772,37 +797,8 @@ def load_data(file_path):
     Keyword arguments:
     file_path: directory stores all downloaded data files
     """
-
-    from itertools import chain, groupby
+    from itertools import chain
     from operator import itemgetter
-
-    def merge_dicts(dicts):
-        """merge dictionaries with the same _id
-        load_drug_target() function and load_drug_target_act() has 11198 duplicated _ids
-
-        Keyword arguments:
-        dicts: itertools chain to iterate through all dictionaries from all above load functions
-        """
-        merged_docs = {}
-        sorted_dicts = sorted(dicts, key=itemgetter("_id"))
-        grouped_dicts = groupby(sorted_dicts, key=itemgetter("_id"))
-
-        for _id, group in grouped_dicts:
-            merged_doc = {}
-            for doc in group:
-                for key, value in doc.items():
-                    if key in merged_doc:
-                        if "association" in key:
-                            value.update(value)
-                            merged_doc[key] = value
-                        else:
-                            pass
-                    else:
-                        merged_doc[key] = value
-
-            merged_docs[_id] = merged_doc
-
-        return merged_docs.values()
 
     dicts = chain(
         load_drug_target(file_path),
@@ -812,5 +808,6 @@ def load_data(file_path):
         load_drug_target_act(file_path),
     )
 
-    merged_dicts = merge_dicts(dicts)
-    yield from merged_dicts
+    sorted_dicts = sorted(dicts, key=itemgetter("_id"))
+    yield sorted_dicts
+
