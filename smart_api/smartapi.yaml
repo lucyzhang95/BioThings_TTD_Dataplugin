@@ -332,15 +332,6 @@ components:
       schema:
         type: boolean
         default: false
-    email:
-      name: email
-      description: >-
-        Optional, if you are regular users of our services, we encourage you to provide us an email, 
-        so that we can better track the usage or follow up with you.
-      in: query
-      required: false
-      schema:
-        type: string
     facet_size:
       name: facet_size
       description: >-
@@ -445,51 +436,51 @@ components:
     #   schema:
     #     type: boolean
     #     default: true
-    # aggs:
-    #   name: aggs
-    #   in: query
-    #   required: false
-    #   schema:
-    #     type: array
-    #     items:
-    #       type: string
-    # allow_null:
-    #   name: allow_null
-    #   in: query
-    #   required: false
-    #   schema:
-    #     type: array
-    #     items:
-    #       type: string
-    # always_list:
-    #   name: always_list
-    #   in: query
-    #   required: false
-    #   schema:
-    #     type: array
-    #     items:
-    #       type: string
+    aggs:
+      name: aggs
+      in: query
+      required: false
+      schema:
+        type: array
+        items:
+            type: string
+    allow_null:
+      name: allow_null
+      in: query
+      required: false
+      schema:
+         type: array
+         items:
+           type: string
+    always_list:
+       name: always_list
+       in: query
+       required: false
+       schema:
+         type: array
+         items:
+           type: string
     # explain:
     #   name: explain
     #   in: query
     #   required: false
     #   schema:
     #     type: boolean
-    # format:
-    #   name: format
-    #   description: 'controls output format of server response, currently supports:
-    #     "json", "jsonld", "html". Type: string. Default: json.'
-    #   in: query
-    #   required: false
-    #   schema:
-    #     type: string
-    #     default: json
-    # prefix:
-    #   name: prefix
-    #   in: query
-    #   required: false
-    #   schema:
-    #     type: string
+    format:
+       name: format
+       description: 'controls output format of server response, currently supports:
+         "json", "jsonld", "html". Type: string. Default: json.'
+       in: query
+       required: false
+       schema:
+         type: string
+         default: json
+    prefix:
+       name: prefix
+       in: query
+       required: false
+       schema:
+         type: string
     # raw:
     #   name: raw
     #   in: query
@@ -502,12 +493,12 @@ components:
     #   required: false
     #   schema:
     #     type: boolean
-    # search:
-    #   name: search
-    #   in: query
-    #   required: false
-    #   schema:
-    #     type: string
+    search:
+       name: search
+       in: query
+       required: false
+       schema:
+         type: string
     # userquery:
     #   name: userquery
     #   in: query
