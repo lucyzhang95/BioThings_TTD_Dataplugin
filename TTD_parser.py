@@ -80,13 +80,13 @@ class UniprotJobIDs:
         from "https://rest.uniprot.org/idmapping/run"
         """
         connector = aiohttp.TCPConnector(verify_ssl=False)
-        semaphore = asyncio.Semaphore(100)  # limit co-current tasks to 100
-        async with semaphore:
-            async with aiohttp.ClientSession(connector=connector) as session:
-                tasks = self.get_tasks(session)
-                responses = await asyncio.gather(*tasks)
-                for response in responses:
-                    self.job_ids.append(await response.json())
+        # semaphore = asyncio.Semaphore(100)  # limit co-current tasks to 100
+        # async with semaphore:
+        async with aiohttp.ClientSession(connector=connector) as session:
+            tasks = self.get_tasks(session)
+            responses = await asyncio.gather(*tasks)
+            for response in responses:
+                self.job_ids.append(await response.json())
 
     def run_async_task_job_ids(self):
         """execute get_jobIDs() when called and obtain jobID json output
@@ -129,36 +129,39 @@ class MappedUniprotKbs:
         :return: asyncio object contains list of {"uniprot_kb": "kb", "uniprot_ac": "ac"}
         """
         connector = aiohttp.TCPConnector(verify_ssl=False)
-        semaphore = asyncio.Semaphore(100)  # limit co-current tasks to 100
-        async with semaphore:
-            async with aiohttp.ClientSession(
-                trust_env=True, timeout=aiohttp.ClientTimeout(total=300), connector=connector
-            ) as session:
-                tasks = self.get_jobId_mapping_link(session)
-                batch_size = 10
-                task_batches = [tasks[i : i + batch_size] for i in range(0, len(tasks), batch_size)]
+        no_match = []
+        # semaphore = asyncio.Semaphore(100)  # limit co-current tasks to 100
+        # async with semaphore:
+        async with aiohttp.ClientSession(
+            trust_env=True, timeout=aiohttp.ClientTimeout(total=300), connector=connector
+        ) as session:
+            tasks = self.get_jobId_mapping_link(session)
+            batch_size = 10
+            task_batches = [tasks[i : i + batch_size] for i in range(0, len(tasks), batch_size)]
 
-                for batch in task_batches:
-                    batch_result = await asyncio.gather(*batch)
-                    for response in batch_result:
-                        try:
-                            results = await response.json()
-                            if "messages" in results:
-                                print(f"{results['url']} results cannot be found on uniprot.")
-                            else:
-                                try:
-                                    if results["results"]:
-                                        ac = results.get("results")[0]["from"]
-                                        kb = results.get("results")[0]["to"]["primaryAccession"]
-                                        mapped_dict = {"uniprot_kb": kb, "uniprot_ac": ac}
-                                        self.uniprot_ac_kb.append(mapped_dict)
-                                except IndexError:
-                                    print(f"{results.get('failedIds')} cannot be found on uniprot.")
-                        except (
-                            aiohttp.client_exceptions.ClientOSError,
-                            aiohttp.client_exceptions.ServerDisconnectedError,
-                        ):
-                            await asyncio.sleep(5)  # To avoid ClientConnectorError: 443 [Operation timed out]
+            for batch in task_batches:
+                batch_result = await asyncio.gather(*batch)
+                for response in batch_result:
+                    try:
+                        results = await response.json()
+                        if "messages" in results:
+                            no_match.append(results["url"])
+                            # print(f"{results['url']} results cannot be found on uniprot.")
+                        else:
+                            try:
+                                if results["results"]:
+                                    ac = results.get("results")[0]["from"]
+                                    kb = results.get("results")[0]["to"]["primaryAccession"]
+                                    mapped_dict = {"uniprot_kb": kb, "uniprot_ac": ac}
+                                    self.uniprot_ac_kb.append(mapped_dict)
+                            except IndexError:
+                                no_match.append(results.get("failedIds"))
+                                # print(f"{results.get('failedIds')} cannot be found on uniprot.")
+                    except (
+                        aiohttp.client_exceptions.ClientOSError,
+                        aiohttp.client_exceptions.ServerDisconnectedError,
+                    ):
+                        await asyncio.sleep(5)  # To avoid ClientConnectorError: 443 [Operation timed out]
 
 
 class UniprotMapping:
@@ -651,19 +654,28 @@ def load_drug_target_act(file_path):
     drug_target_data = pd.read_excel(drug_targ_file, engine="openpyxl").to_dict(orient="records")
 
     target_info_d = {d["ttd_target_id"]: d for d in get_target_info(file_path)}
-    drug_target_dict = {(dicts["TargetID"], dicts["DrugID"]): dicts for dicts in drug_target_data}
+    drug_target_dict = {
+        (dicts["TargetID"], dicts["DrugID"]): {
+            "trial_status": dicts["Highest_status"].lower(),
+            "moa": dicts["MOA"].lower(),
+        }
+        for dicts in drug_target_data
+    }
 
-    subject_node = {}
+    pattern_not_matched = []
 
     for line in tabfile_feeder(activity_file, header=1):
-        subject_node["id"] = f"PUBCHEM.COMPOUND:{line[2]}"
-        subject_node["pubchem_compound"] = line[2]
-        subject_node["ttd_drug_id"] = line[1]
-        subject_node["type"] = "biolink:SmallMolecule"
+        subject_node = {
+            "id": f"PUBCHEM.COMPOUND:{line[2]}",
+            "pubchem_compound": line[2],
+            "ttd_drug_id": line[1],
+            "type": "biolink:SmallMolecule",
+        }
 
         if line[0] in target_info_d:
             if "uniprotkb" in target_info_d[line[0]]:
                 object_node = {"id": f"UniProtKB:{target_info_d[line[0]].get('uniprotkb')[0]}"}
+
             else:
                 object_node = {"id": f"ttd_target_id:{line[0]}"}
             object_node.update(target_info_d[line[0]])
@@ -671,40 +683,28 @@ def load_drug_target_act(file_path):
         else:
             object_node = {"id": f"ttd_target_id:{line[0]}", "ttd_target_id": line[0], "type": "biolink:Protein"}
 
-        if subject_node and object_node:
-            _id = f"{subject_node['id'].split(':')[1]}_interacts_with_{object_node['id'].split(':')[1]}"
-            association = {"predicate": "biolink:interacts_with"}
-
-            if (line[0], line[1]) in drug_target_dict:
-                for _key, value in drug_target_dict.items():
-                    association["trial_status"] = value["Highest_status"].lower()
-                    if value["MOA"] != ".":
-                        association["moa"] = value["MOA"].lower()
-
-                    pattern = re.match(r"(IC50|Ki|EC50)\s+(.+)", line[3])
-                    if pattern:
-                        association[pattern.groups()[0].lower()] = pattern.groups()[1].replace(" ", "")
-                    else:
-                        print(f"{line[3]} pattern does not match.")
-
-            else:
-                pattern = re.match(r"(IC50|Ki|EC50)\s+(.+)", line[3])
-                if pattern:
-                    association[pattern.groups()[0].lower()] = pattern.groups()[1].replace(" ", "")
-                else:
-                    print(f"{line[3]} pattern does not match.")
-
-            output_dict = {
-                "_id": _id,
-                "association": association,
-                "object": object_node,
-                "subject": subject_node,
-            }
-
-            yield output_dict
-
+        _id = f"{subject_node['id'].split(':')[1]}_interacts_with_{object_node['id'].split(':')[1]}"
+        association = {"predicate": "biolink:interacts_with"}
+        pattern = re.match(r"(IC50|Ki|EC50)\s+(.+)", line[3])
+        if pattern:
+            association[pattern.groups()[0].lower()] = pattern.groups()[1].replace(" ", "")
         else:
-            print("Subject and Object need to be provided.")
+            pattern_not_matched.append(line[3])
+
+        dt_pair = (line[0], line[1])
+        if dt_pair in drug_target_dict.keys():
+            if drug_target_dict[dt_pair]["moa"] != ".":
+                association.update(drug_target_dict[dt_pair])
+            else:
+                association.update(drug_target_dict[dt_pair])
+
+        output_dict = {
+            "_id": _id,
+            "association": association,
+            "object": object_node,
+            "subject": subject_node,
+        }
+        yield output_dict
 
 
 def load_drug_target(file_path):
