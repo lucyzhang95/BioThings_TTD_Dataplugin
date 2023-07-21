@@ -633,9 +633,13 @@ def load_biomarker_dis_data(file_path):
 
 def load_drug_target_act(file_path):
     """load data from P1-09-Target_compound_activity.txt file
+    and from P1-07-Drug-TargetMapping.xlsx file
+    There are 13460 drug-target pairs overlapped in both files
+    Merge the association fields of the 13460 paris in this function
 
     Keyword arguments:
     file_path: directory stores P1-09-Target_compound_activity.txt file
+    file_path: directory stores P1-07-Drug-TargetMapping.xlsx file
     """
     import pandas as pd
 
@@ -705,10 +709,13 @@ def load_drug_target_act(file_path):
 
 def load_drug_target(file_path):
     """load data from P1-07-Drug-TargetMapping.xlsx file
-        and clean up the data
+    and P1-09-Target_compound_activity.txt file
+    The rest of 31203 out of 44663 drug-target pairs
+    are parsed
 
     Keyword arguments:
     file_path: directory stores P1-07-Drug-TargetMapping.xlsx file
+    file_path: directory stores P1-09-Target_compound_activity.txt file
     """
     import pandas as pd
 
