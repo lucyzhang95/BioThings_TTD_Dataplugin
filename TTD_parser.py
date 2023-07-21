@@ -132,11 +132,11 @@ class MappedUniprotKbs:
         semaphore = asyncio.Semaphore(100)  # limit co-current tasks to 100
         async with semaphore:
             async with aiohttp.ClientSession(
-                    trust_env=True, timeout=aiohttp.ClientTimeout(total=300), connector=connector
+                trust_env=True, timeout=aiohttp.ClientTimeout(total=300), connector=connector
             ) as session:
                 tasks = self.get_jobId_mapping_link(session)
                 batch_size = 10
-                task_batches = [tasks[i: i + batch_size] for i in range(0, len(tasks), batch_size)]
+                task_batches = [tasks[i : i + batch_size] for i in range(0, len(tasks), batch_size)]
 
                 for batch in task_batches:
                     batch_result = await asyncio.gather(*batch)
@@ -155,7 +155,9 @@ class MappedUniprotKbs:
                                 except IndexError:
                                     print(f"{results.get('failedIds')} cannot be found on uniprot.")
                         except (
-                        aiohttp.client_exceptions.ClientOSError, aiohttp.client_exceptions.ServerDisconnectedError):
+                            aiohttp.client_exceptions.ClientOSError,
+                            aiohttp.client_exceptions.ServerDisconnectedError,
+                        ):
                             await asyncio.sleep(5)  # To avoid ClientConnectorError: 443 [Operation timed out]
 
 
@@ -330,96 +332,6 @@ def get_icd9_11_mondo_mapping(file_path):
             icd11_mondo[icd11] = icd9_mondo[icd9]
 
     yield icd11_mondo
-
-
-def load_drug_target(file_path):
-    """load data from P1-07-Drug-TargetMapping.xlsx file
-        and clean up the data
-
-    Keyword arguments:
-    file_path: directory stores P1-07-Drug-TargetMapping.xlsx file
-    """
-    import pandas as pd
-
-    drug_targ_file = os.path.join(file_path, "P1-07-Drug-TargetMapping.xlsx")
-    assert os.path.exists(drug_targ_file)
-
-    drug_target_data = pd.read_excel(drug_targ_file, engine="openpyxl").to_dict(orient="records")
-
-    target_info_d = {d["ttd_target_id"]: d for d in get_target_info(file_path)}
-    drug_mapping_info = {d["ttd_drug_id"]: d for d in mapping_drug_id(file_path)}
-
-    all_output_l = []
-
-    for dicts in drug_target_data:
-        if dicts["TargetID"] in target_info_d:
-            if "uniprotkb" in target_info_d[dicts["TargetID"]]:
-                object_node = {"id": f"UniProtKB:{target_info_d[dicts['TargetID']].get('uniprotkb')[0]}"}
-            else:
-                object_node = {"id": f"ttd_target_id:{dicts['TargetID']}"}
-            object_node.update(target_info_d[dicts["TargetID"]])
-            object_node["type"] = "biolink:Protein"
-        else:
-            object_node = {
-                "id": f"ttd_target_id:{dicts['TargetID']}",
-                "ttd_target_id": dicts["TargetID"],
-                "type": "biolink:Protein",
-            }
-
-        if dicts["DrugID"] in drug_mapping_info:
-            if "chebi" in drug_mapping_info[dicts["DrugID"]]:
-                subject_node = {"id": f"CHEBI:{drug_mapping_info[dicts['DrugID']]['chebi']}"}
-            elif (
-                    "pubchem_compound" in drug_mapping_info[dicts["DrugID"]]
-                    and "chebi" not in drug_mapping_info[dicts["DrugID"]]
-            ):
-                if isinstance(drug_mapping_info[dicts["DrugID"]]["pubchem_compound"], list):
-                    subject_node = {
-                        "id": f"PUBCHEM.COMPOUND:{drug_mapping_info[dicts['DrugID']]['pubchem_compound'][0]}"
-                    }
-                else:
-                    subject_node = {"id": f"PUBCHEM.COMPOUND:{drug_mapping_info[dicts['DrugID']]['pubchem_compound']}"}
-
-            else:
-                subject_node = {"id": f"ttd_drug_id:{dicts['DrugID']}"}
-            subject_node.update(drug_mapping_info[dicts["DrugID"]])
-            subject_node["type"] = "biolink:SmallMolecule"
-
-        else:
-            subject_node = {
-                "id": f"ttd_drug_id:{dicts['DrugID']}",
-                "ttd_drug_id": dicts["DrugID"],
-                "type": "biolink:SmallMolecule",
-            }
-
-        _id = f"{subject_node['id'].split(':')[1]}_interacts_with_{object_node['id'].split(':')[1]}"
-        association = {"predicate": "biolink:interacts_with", "trial_status": dicts["Highest_status"].lower()}
-        output_dict = {"_id": _id, "association": association, "object": object_node, "subject": subject_node}
-
-        drug_moa = dicts["MOA"]
-        if drug_moa != ".":
-            association["moa"] = drug_moa.lower()
-
-            all_output_l.append(output_dict)
-
-    """
-    Remove duplicates with same _id (same pubchem_cid/chembi_id but different ttd_drug_id)
-    For example:
-    {'_id': '445455_interacts_with_P13631', 'subject':{'ttd_drug_id': 'D0M3LK', 'pubchem_cid': '445455'}}
-    {'_id': '445455_interacts_with_P13631' 'subject':{'ttd_drug_id': 'D0MC3J', 'pubchem_cid': '445455'}}
-    Only keep the first one
-    """
-
-    unique_ids = {}
-    filtered_data = []
-    for output in all_output_l:
-        _id = output["_id"]
-        if _id not in unique_ids:
-            unique_ids[_id] = True
-            filtered_data.append(output)
-
-    for item in filtered_data:
-        yield item
 
 
 def load_drug_dis_data(file_path):
@@ -760,7 +672,7 @@ def load_drug_target_act(file_path):
             association = {"predicate": "biolink:interacts_with"}
 
             if (line[0], line[1]) in drug_target_dict:
-                for key, value in drug_target_dict.items():
+                for _key, value in drug_target_dict.items():
                     association["trial_status"] = value["Highest_status"].lower()
                     if value["MOA"] != ".":
                         association["moa"] = value["MOA"].lower()
@@ -791,6 +703,112 @@ def load_drug_target_act(file_path):
             print("Subject and Object need to be provided.")
 
 
+def load_drug_target(file_path):
+    """load data from P1-07-Drug-TargetMapping.xlsx file
+        and clean up the data
+
+    Keyword arguments:
+    file_path: directory stores P1-07-Drug-TargetMapping.xlsx file
+    """
+    import pandas as pd
+
+    drug_targ_file = os.path.join(file_path, "P1-07-Drug-TargetMapping.xlsx")
+    assert os.path.exists(drug_targ_file)
+
+    activity_file = os.path.join(file_path, "P1-09-Target_compound_activity.txt")
+    assert os.path.exists(activity_file)
+
+    drug_target_data = pd.read_excel(drug_targ_file, engine="openpyxl").to_dict(orient="records")
+
+    target_info_d = {d["ttd_target_id"]: d for d in get_target_info(file_path)}
+    drug_mapping_info = {d["ttd_drug_id"]: d for d in mapping_drug_id(file_path)}
+
+    all_output_l = []
+    dt_dict = {}
+
+    for line in tabfile_feeder(activity_file, header=1):
+        dt_pair = {(line[0], line[1]): "drug-target pair"}
+        dt_dict.update(dt_pair)
+
+    for dicts in drug_target_data:
+        if (dicts["TargetID"], dicts["DrugID"]) not in dt_dict.keys():
+            if dicts["TargetID"] in target_info_d:
+                if "uniprotkb" in target_info_d[dicts["TargetID"]]:
+                    object_node = {"id": f"UniProtKB:{target_info_d[dicts['TargetID']].get('uniprotkb')[0]}"}
+                else:
+                    object_node = {"id": f"ttd_target_id:{dicts['TargetID']}"}
+                object_node.update(target_info_d[dicts["TargetID"]])
+                object_node["type"] = "biolink:Protein"
+            else:
+                object_node = {
+                    "id": f"ttd_target_id:{dicts['TargetID']}",
+                    "ttd_target_id": dicts["TargetID"],
+                    "type": "biolink:Protein",
+                }
+
+            if dicts["DrugID"] in drug_mapping_info:
+                if "chebi" in drug_mapping_info[dicts["DrugID"]]:
+                    subject_node = {"id": f"CHEBI:{drug_mapping_info[dicts['DrugID']]['chebi']}"}
+                elif (
+                    "pubchem_compound" in drug_mapping_info[dicts["DrugID"]]
+                    and "chebi" not in drug_mapping_info[dicts["DrugID"]]
+                ):
+                    if isinstance(drug_mapping_info[dicts["DrugID"]]["pubchem_compound"], list):
+                        subject_node = {
+                            "id": f"PUBCHEM.COMPOUND:{drug_mapping_info[dicts['DrugID']]['pubchem_compound'][0]}"
+                        }
+                    else:
+                        subject_node = {
+                            "id": f"PUBCHEM.COMPOUND:{drug_mapping_info[dicts['DrugID']]['pubchem_compound']}"
+                        }
+
+                else:
+                    subject_node = {"id": f"ttd_drug_id:{dicts['DrugID']}"}
+
+                subject_node.update(drug_mapping_info[dicts["DrugID"]])
+                subject_node["type"] = "biolink:SmallMolecule"
+
+            else:
+                subject_node = {
+                    "id": f"ttd_drug_id:{dicts['DrugID']}",
+                    "ttd_drug_id": dicts["DrugID"],
+                    "type": "biolink:SmallMolecule",
+                }
+
+            _id = f"{subject_node['id'].split(':')[1]}_interacts_with_{object_node['id'].split(':')[1]}"
+            association = {"predicate": "biolink:interacts_with"}
+            if dicts["MOA"] != ".":
+                association["moa"] = dicts["MOA"].lower()
+                association["trial_status"] = dicts["Highest_status"].lower()
+            else:
+                association["trial_status"] = dicts["Highest_status"].lower()
+
+            output_dict = {"_id": _id, "association": association, "object": object_node, "subject": subject_node}
+            all_output_l.append(output_dict)
+
+        else:
+            pass
+
+    """
+    Remove duplicates with same _id (same pubchem_cid/chembi_id but different ttd_drug_id)
+    For example:
+    {'_id': '445455_interacts_with_P13631', 'subject':{'ttd_drug_id': 'D0M3LK', 'pubchem_cid': '445455'}}
+    {'_id': '445455_interacts_with_P13631' 'subject':{'ttd_drug_id': 'D0MC3J', 'pubchem_cid': '445455'}}
+    Only keep the first one
+    """
+
+    unique_ids = {}
+    filtered_data = []
+    for output in all_output_l:
+        _id = output["_id"]
+        if _id not in unique_ids:
+            unique_ids[_id] = True
+            filtered_data.append(output)
+
+    for item in filtered_data:
+        yield item
+
+
 def load_data(file_path):
     """main data load function
 
@@ -800,14 +818,17 @@ def load_data(file_path):
     from itertools import chain
     from operator import itemgetter
 
-    dicts = chain(
-        load_drug_target(file_path),
-        load_drug_dis_data(file_path),
-        load_target_dis_data(file_path),
-        load_biomarker_dis_data(file_path),
-        load_drug_target_act(file_path),
+    doc_list = list(
+        chain(
+            load_drug_dis_data(file_path),
+            load_target_dis_data(file_path),
+            load_biomarker_dis_data(file_path),
+            load_drug_target_act(file_path),
+            load_drug_target(file_path),
+        )
     )
 
-    sorted_dicts = sorted(dicts, key=itemgetter("_id"))
-    yield sorted_dicts
+    sorted_docs = sorted(doc_list, key=itemgetter("_id"))
 
+    for doc in sorted_docs:
+        yield doc
