@@ -470,6 +470,7 @@ def load_target_dis_data(file_path):
     icd11_mondo = [d for d in get_icd9_11_mondo_mapping(file_path)]
 
     targ_dis_list = []
+    all_output_l = []
 
     targ_id = None
     targ_name = None
@@ -547,7 +548,17 @@ def load_target_dis_data(file_path):
             "object": object_node,
             "subject": subject_node,
         }
-        yield output_dict
+
+        unique_ids = {}
+        filtered_data = []
+        for output in all_output_l:
+            _id = output_dict["_id"]
+            if _id not in unique_ids:
+                unique_ids[_id] = True
+                filtered_data.append(output)
+
+        for item in filtered_data:
+            yield item
 
 
 def load_biomarker_dis_data(file_path):
@@ -816,6 +827,34 @@ def load_drug_target(file_path):
         yield item
 
 
+def merge_drug_target(file_path):
+    """remove the 138 duplicates from P1-07 and P1-09 files
+
+    :param file_path: directory stores the P1-07 and P1-09 source files
+    :return: individual dictionary from load_drug_target and load_drug_target_act files
+    """
+    drug_target_data = load_drug_target(file_path)
+    drug_target_act_data = load_drug_target_act(file_path)
+
+    unique_ids = {}
+    filtered_data = []
+    all_l = []
+
+    for d in drug_target_data:
+        all_l.append(d)
+    for d in drug_target_act_data:
+        all_l.append(d)
+
+    for d in all_l:
+        _id = d["_id"]
+        if _id not in unique_ids:
+            unique_ids[_id] = True
+            filtered_data.append(d)
+
+    for item in filtered_data:
+        yield item
+
+
 def load_data(file_path):
     """main data load function
 
@@ -830,8 +869,7 @@ def load_data(file_path):
             load_drug_dis_data(file_path),
             load_target_dis_data(file_path),
             load_biomarker_dis_data(file_path),
-            load_drug_target_act(file_path),
-            load_drug_target(file_path),
+            merge_drug_target(file_path),
         )
     )
 
