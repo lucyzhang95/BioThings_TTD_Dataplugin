@@ -293,24 +293,37 @@ paths:
       tags:
       - query
       x-bte-kgs-operations:
-      - $ref: '#/components/x-bte-kgs-operations/gene-sensitivity-chem'
-      - $ref: '#/components/x-bte-kgs-operations/gene-sensitivity-chem-rev'
-      - $ref: '#/components/x-bte-kgs-operations/gene-resistance-chem'
-      - $ref: '#/components/x-bte-kgs-operations/gene-resistance-chem-rev'
-      - $ref: '#/components/x-bte-kgs-operations/gene-associated-disease'
-      - $ref: '#/components/x-bte-kgs-operations/gene-associated-disease-rev'
-      - $ref: '#/components/x-bte-kgs-operations/disease-biomarker-gene'
-      - $ref: '#/components/x-bte-kgs-operations/disease-biomarker-gene-rev'
-      - $ref: '#/components/x-bte-kgs-operations/chem-targets-gene'
-      - $ref: '#/components/x-bte-kgs-operations/chem-targets-gene-rev'
-      - $ref: '#/components/x-bte-kgs-operations/gene-physicallyInteracts-gene'
-      - $ref: '#/components/x-bte-kgs-operations/gene-physicallyInteracts-gene-rev'
-      - $ref: '#/components/x-bte-kgs-operations/gene-geneticallyInteracts-gene'
-      - $ref: '#/components/x-bte-kgs-operations/gene-geneticallyInteracts-gene-rev'
-      - $ref: '#/components/x-bte-kgs-operations/gene-negativelyCorrelated-gene'
-      - $ref: '#/components/x-bte-kgs-operations/gene-negativelyCorrelated-gene-rev'
-      - $ref: '#/components/x-bte-kgs-operations/gene-positivelyCorrelated-gene'
-      - $ref: '#/components/x-bte-kgs-operations/gene-positivelyCorrelated-gene-rev'
+      - $ref: '#/components/x-bte-kgs-operations/chebi_treats_mondo'
+      - $ref: '#/components/x-bte-kgs-operations/chebi_treats_mondo-rev'
+      - $ref: '#/components/x-bte-kgs-operations/chebi_treats_icd11'
+      - $ref: '#/components/x-bte-kgs-operations/chebi_treats_icd11-rev'
+      - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_treats_mondo'
+      - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_treats_mondo-rev'
+      - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_treats_icd11'
+      - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_treats_icd11-rev'
+      - $ref: '#/components/x-bte-kgs-operations/uniprotkb_target_for_mondo'
+      - $ref: '#/components/x-bte-kgs-operations/uniprotkb_target_for_mondo-rev'
+      - $ref: '#/components/x-bte-kgs-operations/ttd_target_id_target_for_mondo'
+      - $ref: '#/components/x-bte-kgs-operations/ttd_target_id_target_for_mondo-rev'
+      - $ref: '#/components/x-bte-kgs-operations/ttd_target_id_target_for_icd11'
+      - $ref: '#/components/x-bte-kgs-operations/ttd_target_id_target_for_icd11-rev'
+      - $ref: '#/components/x-bte-kgs-operations/chebi_interacts_with_uniprotkb'
+      - $ref: '#/components/x-bte-kgs-operations/chebi_interacts_with_uniprotkb-rev'
+      - $ref: '#/components/x-bte-kgs-operations/chebi_interacts_with_ttd_target_id'
+      - $ref: '#/components/x-bte-kgs-operations/chebi_interacts_with_ttd_target_id-rev'
+      - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_interacts_with_uniprotkb'
+      - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_interacts_with_uniprotkb-rev'
+      - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_interacts_with_ttd_target_id'
+      - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_interacts_with_ttd_target_id-rev'
+      # - $ref: '#/components/x-bte-kgs-operations/ttd_biomarker_id_biomarker_for_mondo'
+      # - $ref: '#/components/x-bte-kgs-operations/ttd_biomarker_id_biomarker_for_mondo-rev'
+      # - $ref: '#/components/x-bte-kgs-operations/ttd_biomarker_id_biomarker_for_icd11'
+      # - $ref: '#/components/x-bte-kgs-operations/ttd_biomarker_id_biomarker_for_icd11-rev'
+      # - $ref: '#/components/x-bte-kgs-operations/ttd_biomarker_id_biomarker_for_icd10'
+      # - $ref: '#/components/x-bte-kgs-operations/ttd_biomarker_id_biomarker_for_icd10-rev'
+      # - $ref: '#/components/x-bte-kgs-operations/ttd_biomarker_id_biomarker_for_icd9'
+      # - $ref: '#/components/x-bte-kgs-operations/ttd_biomarker_id_biomarker_for_icd9-rev'
+
 components:
   parameters:
     callback:
@@ -563,41 +576,57 @@ components:
   #     - type: string
   x-bte-kgs-operations:
   ## in the API's records:
-  ## - subjects and objects can be Gene (NCBIGene), SmallMolecule (PUBCHEM.COMPOUND), Disease (MONDO)
-  ## - predicates can be associated_with_resistance_to, associated_with_sensitivity_to
-  ##   gene_associated_with_condition, has_biomarker, physically_interacts_with,
-  ##   physically_interacts_with, genetically_interacts_with,
-  ##   negatively_correlated_with, positively_correlated_with
+  ## - subjects and objects can be Gene/Protein (UniprotKB), SmallMolecule (PUBCHEM.COMPOUND, CHEBI),
+  ##   Disease (MONDO, ICD11, ICD10, ICD9)
+  ## - predicates can be treats, target_for, interacts_with
+  ##   SmallMolecule_treats_Disease, Gene_target_for_Disease, SmallMolecule_interacts_with_Gene
   ## - BTE automatically puts prefix on MONDO IDs, but prefix has to be added to other ID inputs
   ## - currently, BTE will also accept response with Translator-prefix (api-response-transform module).
   ## - joinSafe is only needed if the delimiter isn't a comma
-    gene-sensitivity-chem:
-    ##  https://biothings.ncats.io/biggim_drugresponse_kp/query?q=predicate:"biolink:associated_with_sensitivity_to"
-    ##  95994 records
+  ## fields not included due to data-processing / biolink-modeling issues:
+  ## - association.clinical_trial.status: possible values
+  ##     'investigative', 'patented', 'phase 2', 'approved', 'phase 1', 'terminated', 'phase 3',
+  ##     'discontinued in phase 2', 'phase 1/2', 'discontinued in phase 1', 'preclinical', 'discontinued in phase 3',
+  ##     'phase 2/3', 'clinical trial', 'withdrawn from market', 'phase 4', 'phase 3 trial', 'discontinued in phase1/2',
+  ##     'phase 2 trial', 'discontinued in preregistration', 'phase 2/3 trial', 'preregistration', 'phase 2a',
+  ##     'phase 1 trial', 'phase 0', 'registered', 'approved (orphan drug)', 'phase 1b', 'phase 2b',
+  ##     'discontinued in phase2/3', 'NDA filed', 'phase 1/2 trial', 'phase 1/2a', 'discontinued in phase 1 trial',
+  ##     'discontinued in phase 4', 'phase 1b/2a', 'application submitted', 'approval submitted', 'BLA submitted',
+  ##     'discontinued in phase 2a', 'discontinued in phase 2b'
+    chebi_treats_mondo:
+    ##   https://biothings.ci.transltr.io/ttd/query?q=association.predicate:biolink\:treats
+    ##   28661 records
       - supportBatch: true
         useTemplating: true ## flag to say templating is being used below
         inputs:
-          - id: NCBIGene #biolink prefix for id
-            semantic: Gene #category of id
+          - id: CHEBI
+            semantic: SmallMolecule
         requestBodyType: object
-        requestBody:
+        requestBody: ## no prefix
           body: >-
             {
-              "q": [ {{ queryInputs | replPrefix('NCBIGene') | wrap( '["' , '","biolink:associated_with_sensitivity_to"]') }} ], 
-              "scopes": ["subject.NCBIGene", "predicate"] 
+              "q": [ {{ queryInputs | wrap( '["' , '","biolink:treats"]') }} ], 
+              "scopes": ["subject.chebi", "association.predicate"] 
             }
-        parameters:
-          fields: object.pubchem_compound,attributes #field to return
-          size: 1000
         outputs:
-          - id: "PUBCHEM.COMPOUND" #
-            semantic: SmallMolecule
-        predicate: associated_with_sensitivity_to
+          - id: "MONDO"
+            semantic: Disease
+        parameters:
+          ## not including these fields due to data-processing / biolink-modeling issues
+          ## - association.clinical_trial.status
+          fields: >-
+            object.mondo,
+            object.icd11,
+            object.name,
+            subject.name
+          size: 1000
+        predicate: treats
+        source: "infores:ttd"
         response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/pubchem-object"
+          "$ref": "#/components/x-bte-response-mapping/mondo-obj"
         # testExamples:
-        #   - qInput: "NCBIGene:25878"                    ## MXRA5
-        #     oneOutput: "PUBCHEM.COMPOUND:135539077"     ## THZ-2-102-1 (Luminespib)
+        #   - qInput: "CHEBI:101853"                    ## Gemifloxacin
+        #     oneOutput: "MONDO:"     ## THZ-2-102-1 (Luminespib)
     gene-sensitivity-chem-rev:
       - supportBatch: true
         useTemplating: true ## flag to say templating is being used below
