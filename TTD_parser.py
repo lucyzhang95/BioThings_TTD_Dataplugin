@@ -536,9 +536,8 @@ def load_target_dis_data(file_path):
             if icd11 in d:
                 object_node["id"] = d[icd11]
                 object_node["mondo"] = d[icd11].split(":")[1]
-
-        if object_node["id"] is None:
-            object_node["id"] = f"ICD11:{icd11}"
+            else:
+                object_node["id"] = f"ICD11:{icd11}"
 
         _id = f"{subject_node['id'].split(':')[1]}_target_for_{object_node['id'].split(':')[1]}"
 
@@ -551,16 +550,16 @@ def load_target_dis_data(file_path):
 
         all_output_l.append(output_dict)
 
-        unique_ids = {}
-        filtered_data = []
-        for output in all_output_l:
-            _id = output_dict["_id"]
-            if _id not in unique_ids:
-                unique_ids[_id] = True
-                filtered_data.append(output)
+    unique_ids = {}
+    filtered_data = []
+    for output in all_output_l:
+        _id = output["_id"]
+        if _id not in unique_ids:
+            unique_ids[_id] = True
+            filtered_data.append(output)
 
-        for item in filtered_data:
-            yield item
+    for item in filtered_data:
+        yield item
 
 
 def load_biomarker_dis_data(file_path):
