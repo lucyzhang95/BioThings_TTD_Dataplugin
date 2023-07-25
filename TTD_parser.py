@@ -549,6 +549,8 @@ def load_target_dis_data(file_path):
             "subject": subject_node,
         }
 
+        all_output_l.append(output_dict)
+
         unique_ids = {}
         filtered_data = []
         for output in all_output_l:
