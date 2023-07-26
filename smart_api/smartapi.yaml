@@ -309,8 +309,8 @@ paths:
       # - $ref: '#/components/x-bte-kgs-operations/ttd_target_id_target_for_icd11-rev'
       - $ref: '#/components/x-bte-kgs-operations/chebi_interacts_with_uniprotkb'
       - $ref: '#/components/x-bte-kgs-operations/chebi_interacts_with_uniprotkb-rev'
-      - $ref: '#/components/x-bte-kgs-operations/chebi_interacts_with_ttd_target_id'
-      - $ref: '#/components/x-bte-kgs-operations/chebi_interacts_with_ttd_target_id-rev'
+      # - $ref: '#/components/x-bte-kgs-operations/chebi_interacts_with_ttd_target_id'
+      # - $ref: '#/components/x-bte-kgs-operations/chebi_interacts_with_ttd_target_id-rev'
       - $ref: '#/components/x-bte-kgs-operations/pubchem_interacts_with_uniprotkb'
       - $ref: '#/components/x-bte-kgs-operations/pubchem_interacts_with_uniprotkb-rev'
       # - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_interacts_with_ttd_target_id'
@@ -623,7 +623,7 @@ components:
         predicate: treats
         source: "infores:ttd"
         response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/mondo-obj"
+          "$ref": "#/components/x-bte-response-mapping/mondo-object"
         # testExamples:
         #   - qInput: "CHEBI:6960"                    ## Moexipril
         #     oneOutput: "MONDO:0001134"              ## Hypertension
@@ -686,7 +686,7 @@ components:
         predicate: treats
         source: "infores:ttd"
         response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/icd11-obj"
+          "$ref": "#/components/x-bte-response-mapping/icd11-object"
         # testExamples:
         #   - qInput: "CHEBI:107601"                ## Savirin
         #     oneOutput: "ICD11:1B5Y"               ## Staphylococcus infection
@@ -750,7 +750,7 @@ components:
         predicate: treats
         source: "infores:ttd"
         response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/mondo-obj"
+          "$ref": "#/components/x-bte-response-mapping/mondo-object"
         # testExamples:
         #   - qInput: "PUBCHEM.COMPOUND:118063735"       ## LMB763 (Nidufexor)
         #     oneOutput: "MONDO:0004790"                 ## Non-alcoholic steatohepatitis
