@@ -703,6 +703,9 @@ components:
               "q": [ {{ queryInputs | wrap( '["' , '","biolink:treats"]') }} ],
               "scopes": ["object.icd11", "association.predicate"]
             }
+        outputs:
+          - id: CHEBI
+            semantic: SmallMolecule
         parameters:
         ## not including these fields due to data-processing / biolink-modeling issues
         ## - association.clinical_trial.status
@@ -711,9 +714,6 @@ components:
             subject.name,
             object.name
           size: 1000
-        outputs:
-          - id: CHEBI
-            semantic: SmallMolecule
         predicate: treated_by
         source: "infores:ttd"
         response_mapping:
@@ -866,6 +866,7 @@ components:
         ## not including these fields due to data-processing / biolink-modeling issues
         ## - association.clinical_trial.status
           fields: >-
+            object.mondo,
             object.name,
             object.icd11,
             subject.name,
@@ -899,6 +900,7 @@ components:
         ## not including these fields due to data-processing / biolink-modeling issues
         ## - association.clinical_trial.status
           fields: >-
+            subject.uniprotkb,
             subject.name,
             subject.bioclass,
             subject.target_type,
@@ -931,6 +933,7 @@ components:
             semantic: Protein
         parameters:
           fields: >-
+            object.uniprotkb,
             object.bioclass,
             object.target_type,
             association.moa
@@ -960,6 +963,7 @@ components:
             semantic: SmallMolecule
         parameters:
           fields: >-
+            subject.chebi,
             object.bioclass,
             object.target_type
           size: 1000
@@ -989,6 +993,7 @@ components:
             semantic: Protein
         parameters:
           fields: >-
+            object.uniprotkb,
             object.target_type,
             object.bioclass,
             association.ic50,
@@ -1019,6 +1024,7 @@ components:
             semantic: SmallMolecule
         parameters:
           fields: >-
+            subject.pubchem_compound,
             object.target_type,
             object.bioclass
           size: 1000
