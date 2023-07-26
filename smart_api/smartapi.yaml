@@ -297,24 +297,24 @@ paths:
       - $ref: '#/components/x-bte-kgs-operations/chebi_treats_mondo-rev'
       - $ref: '#/components/x-bte-kgs-operations/chebi_treats_icd11'
       - $ref: '#/components/x-bte-kgs-operations/chebi_treats_icd11-rev'
-      - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_treats_mondo'
-      - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_treats_mondo-rev'
-      - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_treats_icd11'
-      - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_treats_icd11-rev'
+      - $ref: '#/components/x-bte-kgs-operations/pubchem_treats_mondo'
+      - $ref: '#/components/x-bte-kgs-operations/pubchem_treats_mondo-rev'
+      - $ref: '#/components/x-bte-kgs-operations/pubchem_treats_icd11'
+      - $ref: '#/components/x-bte-kgs-operations/pubchem_treats_icd11-rev'
       - $ref: '#/components/x-bte-kgs-operations/uniprotkb_target_for_mondo'
       - $ref: '#/components/x-bte-kgs-operations/uniprotkb_target_for_mondo-rev'
-      - $ref: '#/components/x-bte-kgs-operations/ttd_target_id_target_for_mondo'
-      - $ref: '#/components/x-bte-kgs-operations/ttd_target_id_target_for_mondo-rev'
-      - $ref: '#/components/x-bte-kgs-operations/ttd_target_id_target_for_icd11'
-      - $ref: '#/components/x-bte-kgs-operations/ttd_target_id_target_for_icd11-rev'
+      # - $ref: '#/components/x-bte-kgs-operations/ttd_target_id_target_for_mondo'
+      # - $ref: '#/components/x-bte-kgs-operations/ttd_target_id_target_for_mondo-rev'
+      # - $ref: '#/components/x-bte-kgs-operations/ttd_target_id_target_for_icd11'
+      # - $ref: '#/components/x-bte-kgs-operations/ttd_target_id_target_for_icd11-rev'
       - $ref: '#/components/x-bte-kgs-operations/chebi_interacts_with_uniprotkb'
       - $ref: '#/components/x-bte-kgs-operations/chebi_interacts_with_uniprotkb-rev'
       - $ref: '#/components/x-bte-kgs-operations/chebi_interacts_with_ttd_target_id'
       - $ref: '#/components/x-bte-kgs-operations/chebi_interacts_with_ttd_target_id-rev'
-      - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_interacts_with_uniprotkb'
-      - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_interacts_with_uniprotkb-rev'
-      - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_interacts_with_ttd_target_id'
-      - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_interacts_with_ttd_target_id-rev'
+      - $ref: '#/components/x-bte-kgs-operations/pubchem_interacts_with_uniprotkb'
+      - $ref: '#/components/x-bte-kgs-operations/pubchem_interacts_with_uniprotkb-rev'
+      # - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_interacts_with_ttd_target_id'
+      # - $ref: '#/components/x-bte-kgs-operations/pubchem_compound_interacts_with_ttd_target_id-rev'
       # - $ref: '#/components/x-bte-kgs-operations/ttd_biomarker_id_biomarker_for_mondo'
       # - $ref: '#/components/x-bte-kgs-operations/ttd_biomarker_id_biomarker_for_mondo-rev'
       # - $ref: '#/components/x-bte-kgs-operations/ttd_biomarker_id_biomarker_for_icd11'
@@ -576,15 +576,15 @@ components:
   #     - type: string
   x-bte-kgs-operations:
   ## in the API's records:
-  ## - subjects and objects can be Gene/Protein (UniprotKB), SmallMolecule (PUBCHEM.COMPOUND, CHEBI),
+  ## - subjects and objects can be Protein/Gene (UniprotKB), SmallMolecule (PUBCHEM.COMPOUND, CHEBI),
   ##   Disease (MONDO, ICD11, ICD10, ICD9)
   ## - predicates can be treats, target_for, interacts_with
   ##   SmallMolecule_treats_Disease, Gene_target_for_Disease, SmallMolecule_interacts_with_Gene
   ## - BTE automatically puts prefix on MONDO IDs, but prefix has to be added to other ID inputs
   ## - currently, BTE will also accept response with Translator-prefix (api-response-transform module).
   ## - joinSafe is only needed if the delimiter isn't a comma
-  ## fields not included due to data-processing / biolink-modeling issues:
-  ## - association.clinical_trial.status: possible values
+  ## - fields not included due to data-processing / biolink-modeling issues:
+  ##   association.clinical_trial.status: possible values include:
   ##     'investigative', 'patented', 'phase 2', 'approved', 'phase 1', 'terminated', 'phase 3',
   ##     'discontinued in phase 2', 'phase 1/2', 'discontinued in phase 1', 'preclinical', 'discontinued in phase 3',
   ##     'phase 2/3', 'clinical trial', 'withdrawn from market', 'phase 4', 'phase 3 trial', 'discontinued in phase1/2',
@@ -594,8 +594,8 @@ components:
   ##     'discontinued in phase 4', 'phase 1b/2a', 'application submitted', 'approval submitted', 'BLA submitted',
   ##     'discontinued in phase 2a', 'discontinued in phase 2b'
     chebi_treats_mondo:
-    ##   https://biothings.ci.transltr.io/ttd/query?q=association.predicate:biolink\:treats
-    ##   28661 records
+    ## https://pending.biothings.io/ttd/query?q=_exists_:subject.chebi%20AND%20association.predicate:%22biolink:treats%22%20AND%20_exists_:object.mondo
+    ## 543 records
       - supportBatch: true
         useTemplating: true ## flag to say templating is being used below
         inputs:
@@ -625,455 +625,414 @@ components:
         response_mapping:
           "$ref": "#/components/x-bte-response-mapping/mondo-obj"
         # testExamples:
-        #   - qInput: "CHEBI:101853"                    ## Gemifloxacin
-        #     oneOutput: "MONDO:"     ## THZ-2-102-1 (Luminespib)
-    gene-sensitivity-chem-rev:
+        #   - qInput: "CHEBI:6960"                    ## Moexipril
+        #     oneOutput: "MONDO:0001134"              ## Hypertension
+    chebi_treats_mondo-rev:
       - supportBatch: true
-        useTemplating: true ## flag to say templating is being used below
+        useTemplating: true
         inputs:
-          - id: "PUBCHEM.COMPOUND"
-            semantic: SmallMolecule
-        requestBodyType: object
-        requestBody:
-          body: >-
-            {
-              "q": [ {{ queryInputs | replPrefix('PUBCHEM.COMPOUND') | wrap( '["' , '","biolink:associated_with_sensitivity_to"]') }} ],
-              "scopes": ["object.pubchem_compound", "predicate"]
-            }
-        parameters:
-          fields: subject.NCBIGene,attributes
-          size: 1000
-        outputs:
-          - id: NCBIGene
-            semantic: Gene
-        predicate: sensitivity_associated_with
-        response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/ncbigene-subject"
-        # testExamples:
-        #   - qInput: "PUBCHEM.COMPOUND:24856436"       ## JNK-9L (Adavosertib)
-        #     oneOutput: "NCBIGene:59352"               ## LGR6
-    gene-resistance-chem:
-    ##  https://biothings.ncats.io/biggim_drugresponse_kp/query?q=predicate:"biolink:associated_with_resistance_to"
-    ##  107719 records
-      - supportBatch: true
-        useTemplating: true ## flag to say templating is being used below
-        inputs:
-          - id: NCBIGene
-            semantic: Gene
-        requestBodyType: object
-        requestBody:
-          body: >-
-            {
-              "q": [ {{ queryInputs | replPrefix('NCBIGene') | wrap( '["' , '","biolink:associated_with_resistance_to"]') }} ],
-              "scopes": ["subject.NCBIGene", "predicate"]
-            }
-        parameters:
-          fields: object.pubchem_compound,attributes
-          size: 1000
-        outputs:
-          - id: "PUBCHEM.COMPOUND"
-            semantic: SmallMolecule
-        predicate: associated_with_resistance_to
-        response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/pubchem-object"
-        # testExamples:
-        #   - qInput: "NCBIGene:5724"                ## PTAFR
-        #     oneOutput: "PUBCHEM.COMPOUND:4261"     ## Elesclomol (Entinostat)
-    gene-resistance-chem-rev:
-      - supportBatch: true
-        useTemplating: true ## flag to say templating is being used below
-        inputs:
-          - id: "PUBCHEM.COMPOUND"
-            semantic: SmallMolecule
-        requestBodyType: object
-        requestBody:
-          body: >-
-            {
-              "q": [ {{ queryInputs | replPrefix('PUBCHEM.COMPOUND') | wrap( '["' , '","biolink:associated_with_resistance_to"]') }} ],
-              "scopes": ["object.pubchem_compound", "predicate"]
-            }
-        parameters:
-          fields: subject.NCBIGene,attributes
-          size: 1000
-        outputs:
-          - id: NCBIGene
-            semantic: Gene
-        predicate: resistance_associated_with
-        response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/ncbigene-subject"
-        # testExamples:
-        #   - qInput: "PUBCHEM.COMPOUND:46844147"       ## AZD8055 (Erk5-IN-1)
-        #     oneOutput: "NCBIGene:26119"               ## LDLRAP1
-    gene-associated-disease:
-    ##  https://biothings.ncats.io/biggim_drugresponse_kp/query?q=predicate:"biolink:gene_associated_with_condition"
-    ##  922 records
-      - supportBatch: true
-        useTemplating: true ## flag to say templating is being used below
-        inputs:
-          - id: NCBIGene
-            semantic: Gene
-        requestBodyType: object
-        requestBody:
-          body: >-
-            {
-              "q": [ {{ queryInputs | replPrefix('NCBIGene') | wrap( '["' , '","biolink:gene_associated_with_condition"]') }} ],
-              "scopes": ["subject.NCBIGene", "predicate"]
-            }
-        parameters:
-          fields: object.MONDO,attributes
-          size: 1000
-        outputs:
-          - id: MONDO
-            semantic: Disease
-        predicate: gene_associated_with_condition
-        response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/mondo-object"
-        # testExamples:
-        #   - qInput: "NCBIGene:10459"       ## MAD2L2
-        #     oneOutput: "MONDO:0019391"     ## Fanconi anemia
-    gene-associated-disease-rev:
-      - supportBatch: true
-        useTemplating: true ## flag to say templating is being used below
-        inputs:
-          - id: MONDO
+          - id: "MONDO"
             semantic: Disease
         requestBodyType: object
         requestBody:
           body: >-
             {
-              "q": [ {{ queryInputs | replPrefix('MONDO') | wrap( '["' , '","biolink:gene_associated_with_condition"]') }} ],
-              "scopes": ["object.MONDO", "predicate"]
+              "q": [ {{ queryInputs | wrap( '["' , '","biolink:treats"]') }} ],
+              "scopes": ["object.mondo", "association.predicate"]
             }
-        parameters:
-          fields: subject.NCBIGene,attributes
-          size: 1000
         outputs:
-          - id: NCBIGene
-            semantic: Gene
-        predicate: condition_associated_with_gene
+          - id: CHEBI
+            semantic: SmallMolecule
+        parameters:
+          fields: >-
+            subject.chebi,
+            subject.name,
+            object.name
+          size: 1000
+        predicate: treated_by
+        source: "infores:ttd"
         response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/ncbigene-subject"
+          "$ref": "#/components/x-bte-response-mapping/chebi-subject"
         # testExamples:
-        #   - qInput: "MONDO:0004056"         ## TCGA-BLCA (bladder papillary urothelial carcinoma)
-        #     oneOutput: "NCBIGene:7157"      ## TP53
-    disease-biomarker-gene:
-    ##  https://biothings.ncats.io/biggim_drugresponse_kp/query?q=predicate:"biolink:has_biomarker"
-    ##  13811 records
+        #   - qInput: "MONDO:0005180"                 ## Parkinson disease
+        #     oneOutput: "CHEBI:134699"               ## Opicapone
+    chebi_treats_icd11:
+    ## https://pending.biothings.io/ttd/query?q=_exists_:subject.chebi%20AND%20association.predicate:%22biolink:treats%22%20AND%20_exists_:object.icd11
+    ## 3842 records
       - supportBatch: true
         useTemplating: true ## flag to say templating is being used below
         inputs:
-          - id: MONDO
-            semantic: Disease
+          - id: CHEBI
+            semantic: SmallMolecule
         requestBodyType: object
-        requestBody:
+        requestBody: ## no prefix
           body: >-
             {
-              "q": [ {{ queryInputs | replPrefix('MONDO') | wrap( '["' , '","biolink:has_biomarker"]') }} ],
-              "scopes": ["subject.MONDO", "predicate"]
+              "q": [ {{ queryInputs | wrap( '["' , '","biolink:treats"]') }} ],
+              "scopes": ["subject.chebi", "association.predicate"]
             }
-        parameters:
-          fields: object.NCBIGene,attributes
-          size: 1000
         outputs:
-          - id: NCBIGene
-            semantic: Gene
-        predicate: has_biomarker
+          - id: ICD11
+            semantic: Disease
+        parameters:
+          ## not including these fields due to data-processing / biolink-modeling issues
+          ## - association.clinical_trial.status
+          ## - object.mondo Not all object node has mondo
+          fields: >-
+            object.icd11,
+            object.name,
+            subject.name
+          size: 1000
+        predicate: treats
+        source: "infores:ttd"
         response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/ncbigene-object"
+          "$ref": "#/components/x-bte-response-mapping/icd11-obj"
         # testExamples:
-        #   - qInput: "MONDO:0005097"       ## LUSC (squamous cell lung carcinoma)
-        #     oneOutput: "NCBIGene:131"     ## ADH7
-    disease-biomarker-gene-rev:
+        #   - qInput: "CHEBI:107601"                ## Savirin
+        #     oneOutput: "ICD11:1B5Y"               ## Staphylococcus infection
+    chebi_treats_icd11-rev:
       - supportBatch: true
-        useTemplating: true ## flag to say templating is being used below
+        useTemplating: true
         inputs:
-          - id: NCBIGene
-            semantic: Gene
+          - id: ICD11
+            semantic: Disease
         requestBodyType: object
-        requestBody:
+        requestBody: ## no prefix
           body: >-
             {
-              "q": [ {{ queryInputs | replPrefix('NCBIGene') | wrap( '["' , '","biolink:has_biomarker"]') }} ],
-              "scopes": ["object.NCBIGene", "predicate"]
+              "q": [ {{ queryInputs | wrap( '["' , '","biolink:treats"]') }} ],
+              "scopes": ["object.icd11", "association.predicate"]
             }
         parameters:
-          fields: subject.MONDO,attributes
+        ## not including these fields due to data-processing / biolink-modeling issues
+        ## - association.clinical_trial.status
+          fields: >-
+            subject.chebi,
+            subject.name,
+            object.name
           size: 1000
         outputs:
-          - id: MONDO
-            semantic: Disease
-        predicate: biomarker_for
+          - id: CHEBI
+            semantic: SmallMolecule
+        predicate: treated_by
+        source: "infores:ttd"
         response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/mondo-subject"
+          "$ref": "#/components/x-bte-response-mapping/chebi-subject"
         # testExamples:
-        #   - qInput: "NCBIGene:1145"         ## CHRNE
-        #     oneOutput: "MONDO:0018874"      ## LAML (acute myeloid leukemia)
-    chem-targets-gene:
-    ##  https://biothings.ncats.io/biggim_drugresponse_kp/query?q=predicate:"biolink:physically_interacts_with"
-    ##  14806 records
+        #   - qInput: "ICD11:CB03.4"                  ## Pulmonary fibrosis
+        #     oneOutput: "CHEBI:144367"               ## 3PO
+    pubchem_treats_mondo:
+    ##  https://pending.biothings.io/ttd/query?q=_exists_:subject.pubchem_compound%20AND%20association.predicate:%22biolink:treats%22%20AND%20_exists_:object.mondo
+    ##  1604 records
       - supportBatch: true
         useTemplating: true ## flag to say templating is being used below
         inputs:
           - id: "PUBCHEM.COMPOUND"
             semantic: SmallMolecule
         requestBodyType: object
-        requestBody:
+        requestBody: ## no prefix
           body: >-
             {
-              "q": [ {{ queryInputs | replPrefix('PUBCHEM.COMPOUND') | wrap( '["' , '","biolink:physically_interacts_with"]') }} ],
-              "scopes": ["subject.pubchem_compound", "predicate"]
+              "q": [ {{ queryInputs | wrap( '["' , '","biolink:treats"]') }} ],
+              "scopes": ["subject.pubchem_compound", "association.predicate"]
             }
-        parameters:
-          fields: object.NCBIGene,attributes
-          size: 1000
         outputs:
-          - id: NCBIGene
-            semantic: Gene
-        predicate: physically_interacts_with
+          - id: MONDO
+            semantic: Disease
+        parameters:
+        ## not including these fields due to data-processing / biolink-modeling issues
+        ## - association.clinical_trial.status
+          fields: >-
+            object.mondo,
+            object.name,
+            subject.name
+          size: 1000
+        predicate: treats
+        source: "infores:ttd"
         response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/ncbigene-object"
+          "$ref": "#/components/x-bte-response-mapping/mondo-obj"
         # testExamples:
-        #   - qInput: "PUBCHEM.COMPOUND:444"     ## Bupropion
-        #     oneOutput: "NCBIGene:6530"         ## SLC6A2
-    chem-targets-gene-rev:
+        #   - qInput: "PUBCHEM.COMPOUND:118063735"       ## LMB763 (Nidufexor)
+        #     oneOutput: "MONDO:0004790"                 ## Non-alcoholic steatohepatitis
+    pubchem_treats_mondo-rev:
       - supportBatch: true
-        useTemplating: true ## flag to say templating is being used below
+        useTemplating: true
         inputs:
-          - id: NCBIGene
-            semantic: Gene
+          - id: MONDO
+            semantic: Disease
         requestBodyType: object
-        requestBody:
+        requestBody: ## no prefix
           body: >-
             {
-              "q": [ {{ queryInputs | replPrefix('NCBIGene') | wrap( '["' , '","biolink:physically_interacts_with"]') }} ],
-              "scopes": ["object.NCBIGene", "predicate"]
+              "q": [ {{ queryInputs | wrap( '["' , '","biolink:treats"]') }} ],
+              "scopes": ["object.mondo", "association.predicate"]
             }
-        parameters:
-          fields: subject.pubchem_compound,attributes
-          size: 1000
         outputs:
           - id: "PUBCHEM.COMPOUND"
             semantic: SmallMolecule
-        predicate: physically_interacts_with #change predicate
+        parameters:
+          fields: >-
+            subject.pubchem_compound,
+            subject.name,
+            object.name
+          size: 1000
+        predicate: treated_by
+        source: "infores:ttd"
         response_mapping:
           "$ref": "#/components/x-bte-response-mapping/pubchem-subject"
         # testExamples:
-        #   - qInput: "NCBIGene:8424"                 ## BBOX1
-        #     oneOutput: "PUBCHEM.COMPOUND:5455"      ## Thiram
-    gene-physicallyInteracts-gene:
-    ##  https://biothings.ncats.io/biggim_drugresponse_kp/query?q=predicate:"biolink:physically_interacts_with"
-    ##  888994 records
+        #   - qInput: "MONDO:0021094"                      ## Human immunodeficiency virus infection
+        #     oneOutput: "PUBCHEM.COMPOUND:103596027"      ## GS-1156
+    pubchem_treats_icd11:
+    ##   https://pending.biothings.io/ttd/query?q=_exists_:subject.pubchem_compound%20AND%20association.predicate:%22biolink:treats%22%20AND%20_exists_:object.icd11
+    ##   11657 records
       - supportBatch: true
         useTemplating: true ## flag to say templating is being used below
         inputs:
-          - id: NCBIGene
-            semantic: Gene
+          - id: "PUBCHEM.COMPOUND"
+            semantic: SmallMolecule
         requestBodyType: object
-        requestBody:
+        requestBody: ## no prefix
           body: >-
             {
-              "q": [ {{ queryInputs | replPrefix('NCBIGene') | wrap( '["' , '","biolink:physically_interacts_with"]') }} ],
-              "scopes": ["subject.NCBIGene", "predicate"]
+              "q": [ {{ queryInputs | wrap( '["' , '","biolink:treats"]') }} ],
+              "scopes": ["subject.pubchem_compound", "association.predicate"]
             }
-        parameters:
-          fields: object.NCBIGene,attributes
-          size: 1000
         outputs:
-          - id: NCBIGene
-            semantic: Gene
-        predicate: physically_interacts_with
+          - id: ICD11
+            semantic: Disease
+        parameters:
+        ## not including these fields due to data-processing / biolink-modeling issues
+        ## - association.clinical_trial.status
+          fields: >-
+            object.icd11,
+            object.name,
+            subject.name
+          size: 1000
+        predicate: treats
+        source: "infores:ttd"
         response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/ncbigene-object"
+          "$ref": "#/components/x-bte-response-mapping/icd11-object"
         # testExamples:
-        #   - qInput: "NCBIGene:9282"        ## MED14
-        #     oneOutput: "NCBIGene:55588"     ## MED29
-    gene-physicallyInteracts-gene-rev:
+        #   - qInput: "PUBCHEM.COMPOUND:126843189"       ## AVN-101 (AVN-101 HCl)
+        #     oneOutput: "ICD11:6D71"                    ## Cognitive impairment
+    pubchem_treats_icd11-rev:
+      - supportBatch: true
+        useTemplating: true
+        inputs:
+          - id: ICD11
+            semantic: Disease
+        requestBodyType: object
+        requestBody: ## no prefix
+          body: >-
+            {
+              "q": [ {{ queryInputs | wrap( '["' , '","biolink:treats"]') }} ],
+              "scopes": ["object.icd11", "association.predicate"]
+            }
+        outputs:
+          - id: "PUBCHEM.COMPOUND"
+            semantic: SmallMolecule
+        parameters:
+          fields: >-
+            subject.pubchem_compound,
+            subject.name,
+            object.name
+          size: 1000
+        predicate: treated_by
+        response_mapping:
+          "$ref": "#/components/x-bte-response-mapping/pubchem-subject"
+        # testExamples:
+        #   - qInput: "ICD11:MG51"                         ## Multidrug resistant infection
+        #     oneOutput: "PUBCHEM.COMPOUND:139600308"      ## SPR206
+    uniprotkb_target_for_mondo:
+    ## https://biothings.ci.transltr.io/ttd/query?q=_exists_:subject.uniprotkb%20AND%20association.predicate:%22biolink:target_for%22%20AND%20_exists_:object.mondo
+    ## 601 records
       - supportBatch: true
         useTemplating: true ## flag to say templating is being used below
         inputs:
-          - id: NCBIGene
-            semantic: Gene
+          - id: UniProtKB
+            semantic: Protein
         requestBodyType: object
-        requestBody:
+        requestBody: ## no prefix
           body: >-
             {
-              "q": [ {{ queryInputs | replPrefix('NCBIGene') | wrap( '["' , '","biolink:physically_interacts_with"]') }} ],
-              "scopes": ["object.NCBIGene", "predicate"]
+              "q": [ {{ queryInputs | wrap( '["' , '","biolink:target_for"]') }} ],
+              "scopes": ["subject.uniprotkb", "association.predicate"]
             }
-        parameters:
-          fields: subject.NCBIGene,attributes
-          size: 1000
         outputs:
-          - id: NCBIGene
-            semantic: Gene
-        predicate: physically_interacts_with
+          - id: MONDO
+            semantic: Disease
+        parameters:
+        ## not including these fields due to data-processing / biolink-modeling issues
+        ## - association.clinical_trial.status
+          fields: >-
+            object.name,
+            object.icd11,
+            subject.name,
+            subject.bioclass,
+            subject.target_type
+          size: 1000
+        predicate: target_for
+        source: "infores:ttd"
         response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/ncbigene-subject"
+          "$ref": "#/components/x-bte-response-mapping/mondo-object"
         # testExamples:
-        #   - qInput: "NCBIGene:6874"       ## TAF4
-        #     oneOutput: "NCBIGene:6881"    ## TAF10
-    gene-geneticallyInteracts-gene:
-    ##  https://biothings.ncats.io/biggim_drugresponse_kp/query?q=predicate:"biolink:genetically_interacts_with"
-    ##  10754 records
+        #   - qInput: "UniProtKB:Q08722"         ## Leukocyte surface antigen CD47
+        #     oneOutput: "MONDO:0001351"         ## Ovarian cancer
+    uniprotkb_target_for_mondo-rev:
+      - supportBatch: true
+        useTemplating: true
+        inputs:
+          - id: MONDO
+            semantic: Disease
+        requestBodyType: object
+        requestBody: ## no prefix
+          body: >-
+            {
+              "q": [ {{ queryInputs | wrap( '["' , '","biolink:target_for"]') }} ],
+              "scopes": ["object.mondo", "association.predicate"]
+            }
+        outputs:
+          - id: UniProtKB
+            semantic: Protein
+        parameters:
+        ## not including these fields due to data-processing / biolink-modeling issues
+        ## - association.clinical_trial.status
+          fields: >-
+            subject.name,
+            subject.bioclass,
+            subject.target_type,
+            object.name,
+            object.icd11
+          size: 1000
+        predicate: targeted_by #check predicate
+        response_mapping:
+          "$ref": "#/components/x-bte-response-mapping/uniprotkb-subject"
+        # testExamples:
+        #   - qInput: "MONDO:0005083"                 ## Psoriasis
+        #     oneOutput: "UniProtKB:P01270"           ## Parathyroid hormone (PTH)
+    chebi_interacts_with_uniprotkb:
+    ## https://biothings.ci.transltr.io/ttd/query?q=_exists_:subject.chebi%20AND%20association.predicate:%22biolink:interacts_with%22%20AND%20_exists_:object.uniprotkb
+    ## 2899 records
       - supportBatch: true
         useTemplating: true ## flag to say templating is being used below
         inputs:
-          - id: NCBIGene
-            semantic: Gene
+          - id: CHEBI
+            semantic: SmallMolecule
         requestBodyType: object
-        requestBody:
+        requestBody: ## no prefix
           body: >-
             {
-              "q": [ {{ queryInputs | replPrefix('NCBIGene') | wrap( '["' , '","biolink:genetically_interacts_with"]') }} ],
-              "scopes": ["subject.NCBIGene", "predicate"]
+              "q": [ {{ queryInputs | wrap( '["' , '","biolink:interacts_with"]') }} ],
+              "scopes": ["subject.chebi", "association.predicate"]
             }
-        parameters:
-          fields: object.NCBIGene,attributes
-          size: 1000
         outputs:
-          - id: NCBIGene
-            semantic: Gene
-        predicate: genetically_interacts_with
+          - id: UniProtKB
+            semantic: Protein
+        parameters:
+          fields: >-
+            object.bioclass,
+            object.target_type,
+            association.moa
+          size: 1000
+        predicate: interacts_with
+        source: "infores:ttd"
         response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/ncbigene-object"
+          "$ref": "#/components/x-bte-response-mapping/uniprotkb-object"
         # testExamples:
-        #   - qInput: "NCBIGene:5980"        ## REV3L
-        #     oneOutput: "NCBIGene:7295"     ## TXN
-    gene-geneticallyInteracts-gene-rev:
+        #   - qInput: "CHEBI:2696"        ## target_type:literature-reported target, bioclass:Acyltransferase
+        #     oneOutput: "UniProtKB:Q8WYB5"
+    chebi_interacts_with_uniprotkb-rev:
+      - supportBatch: true
+        useTemplating: true
+        inputs:
+          - id: UniProtKB
+            semantic: Protein
+        requestBodyType: object
+        requestBody: ## no prefix
+          body: >-
+            {
+              "q": [ {{ queryInputs | wrap( '["' , '","biolink:interacts_with"]') }} ],
+              "scopes": ["object.uniprotkb", "association.predicate"]
+            }
+        outputs:
+          - id: CHEBI
+            semantic: SmallMolecule
+        parameters:
+          fields: >-
+            object.bioclass,
+            object.target_type
+          size: 1000
+        predicate: interacts_with
+        response_mapping:
+          "$ref": "#/components/x-bte-response-mapping/chebi-subject"
+        # testExamples:
+        #   - qInput: "UniProtKB:P47870"       ## target_type:successful target, bioclass:Neurotransmitter receptor
+        #     oneOutput: "CHEBI:2631"
+    pubchem_interacts_with_uniprotkb:
+    ## https://biothings.ci.transltr.io/ttd/query?q=_exists_:subject.pubchem_compound%20AND%20association.predicate:%22biolink:interacts_with%22%20AND%20_exists_:object.uniprotkb
+    ## 493884 records
       - supportBatch: true
         useTemplating: true ## flag to say templating is being used below
         inputs:
-          - id: NCBIGene
-            semantic: Gene
+          - id: "PUBCHEM.COMPOUND"
+            semantic: SmallMolecule
         requestBodyType: object
-        requestBody:
+        requestBody: ## no prefix
           body: >-
             {
-              "q": [ {{ queryInputs | replPrefix('NCBIGene') | wrap( '["' , '","biolink:genetically_interacts_with"]') }} ],
-              "scopes": ["object.NCBIGene", "predicate"]
+              "q": [ {{ queryInputs | wrap( '["' , '","biolink:interacts_with"]') }} ],
+              "scopes": ["subject.pubchem_compound", "association.predicate"]
             }
-        parameters:
-          fields: subject.NCBIGene,attributes
-          size: 1000
         outputs:
-          - id: NCBIGene
-            semantic: Gene
-        predicate: genetically_interacts_with
+          - id: UniProtKB
+            semantic: Protein
+        parameters:
+          fields: >-
+            object.target_type,
+            object.bioclass,
+            association.ic50,
+            association.ec50,
+            association.ki
+          size: 1000
+        predicate: interacts_with
         response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/ncbigene-subject"
+          "$ref": "#/components/x-bte-response-mapping/uniprotkb-object"
         # testExamples:
-        #   - qInput: "NCBIGene:2081"         ## ERN1
-        #     oneOutput: "NCBIGene:4609"      ## MYC
-    gene-negativelyCorrelated-gene:
-    ##  https://biothings.ncats.io/biggim_drugresponse_kp/query?q=predicate:"biolink:negatively_correlated_with"
-    ##  565 records
+        #   - qInput: "PUBCHEM_COMPOUND:9999945"
+        #     oneOutput: "UniProtKB:Q14416"     ## target_type:clinical trial target, bioclass:GPCR glutamate
+    pubchem_interacts_with_uniprotkb-rev:
       - supportBatch: true
-        useTemplating: true ## flag to say templating is being used below
+        useTemplating: true
         inputs:
-          - id: NCBIGene
-            semantic: Gene
+          - id: UniProtKB
+            semantic: Protein
         requestBodyType: object
-        requestBody:
+        requestBody: ## no prefix
           body: >-
             {
-              "q": [ {{ queryInputs | replPrefix('NCBIGene') | wrap( '["' , '","biolink:negatively_correlated_with"]') }} ],
-              "scopes": ["subject.NCBIGene", "predicate"]
+              "q": [ {{ queryInputs | wrap( '["' , '","biolink:interacts_with"]') }} ],
+              "scopes": ["object.uniprotkb", "association.predicate"]
             }
-        parameters:
-          fields: object.NCBIGene,attributes
-          size: 1000
         outputs:
-          - id: NCBIGene
-            semantic: Gene
-        predicate: negatively_correlated_with
-        response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/ncbigene-object"
-        # testExamples:
-        #   - qInput: "NCBIGene:823"        ## CAPN1
-        #     oneOutput: "NCBIGene:4539"    ## MT-ND4L (ND4L)
-    gene-negativelyCorrelated-gene-rev:
-      - supportBatch: true
-        useTemplating: true ## flag to say templating is being used below
-        inputs:
-          - id: NCBIGene
-            semantic: Gene
-        requestBodyType: object
-        requestBody:
-          body: >-
-            {
-              "q": [ {{ queryInputs | replPrefix('NCBIGene') | wrap( '["' , '","biolink:negatively_correlated_with"]') }} ],
-              "scopes": ["object.NCBIGene", "predicate"]
-            }
+          - id: "PUBCHEM.COMPOUND"
+            semantic: SmallMolecule
         parameters:
-          fields: subject.NCBIGene,attributes
+          fields: >-
+            object.target_type,
+            object.bioclass
           size: 1000
-        outputs:
-          - id: NCBIGene
-            semantic: Gene
-        predicate: negatively_correlated_with
+        predicate: interacts_with
         response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/ncbigene-subject"
+          "$ref": "#/components/x-bte-response-mapping/pubchem-subject"
         # testExamples:
-        #   - qInput: "NCBIGene:6540"         ## SLC6A13
-        #     oneOutput: "NCBIGene:1072"      ## CFL1
-    gene-positivelyCorrelated-gene:
-    ##  https://biothings.ncats.io/biggim_drugresponse_kp/query?q=predicate:"biolink:positively_correlated_with"
-    ##  437054 records
-      - supportBatch: true
-        useTemplating: true ## flag to say templating is being used below
-        inputs:
-          - id: NCBIGene
-            semantic: Gene
-        requestBodyType: object
-        requestBody:
-          body: >-
-            {
-              "q": [ {{ queryInputs | replPrefix('NCBIGene') | wrap( '["' , '","biolink:positively_correlated_with"]') }} ],
-              "scopes": ["subject.NCBIGene", "predicate"]
-            }
-        parameters:
-          fields: object.NCBIGene,attributes
-          size: 1000
-        outputs:
-          - id: NCBIGene
-            semantic: Gene
-        predicate: positively_correlated_with
-        response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/ncbigene-object"
-        # testExamples:
-        #   - qInput: "NCBIGene:988"        ## CDC5L
-        #     oneOutput: "NCBIGene:6197"    ## RPS6KA3
-    gene-positivelyCorrelated-gene-rev:
-      - supportBatch: true
-        useTemplating: true ## flag to say templating is being used below
-        inputs:
-          - id: NCBIGene
-            semantic: Gene
-        requestBodyType: object
-        requestBody:
-          body: >-
-            {
-              "q": [ {{ queryInputs | replPrefix('NCBIGene') | wrap( '["' , '","biolink:positively_correlated_with"]') }} ],
-              "scopes": ["object.NCBIGene", "predicate"]
-            }
-        parameters:
-          fields: subject.NCBIGene,attributes
-          size: 1000
-        outputs:
-          - id: NCBIGene
-            semantic: Gene
-        predicate: positively_correlated_with
-        response_mapping:
-          "$ref": "#/components/x-bte-response-mapping/ncbigene-subject"
-        # testExamples:
-        #   - qInput: "NCBIGene:7094"         ## TLN1
-        #     oneOutput: "NCBIGene:7941"      ## PLA2G7
+        #   - qInput: "UniProtKB:P13631"         ## target_type:successful target, bioclass:Nuclear hormone receptor
+        #     oneOutput: "PUBCHEM.COMPOUND:9999621"
   x-bte-response-mapping:
-  ## all have prefix
-    pubchem-subject:
-      "PUBCHEM.COMPOUND": subject.pubchem_compound
-      edge-attributes: attributes
-      #trapi_sources: sources
+    chebi-subject:
+      CHEBI: subject.chebi                  # no prefix
+      input_name: object.name
+      output_name: subject.name
     pubchem-object:
       "PUBCHEM.COMPOUND": object.pubchem_compound
       edge-attributes: attributes
