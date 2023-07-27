@@ -2,19 +2,19 @@
 Data source: https://db.idrblab.net/ttd/full-data-download
 Version 8.1.01 (2021.11.08)
 
-Last Updated: 07/10/23
+Last Updated: 07/26/23
 
 ***
 # Summary
 
 |Entity| Count |
 |:--|:-----:|
-|Total records| 876,675 |
+|Total records| 876,192 |
 
+- Final total records 876,192 (834,616 + 2,512 + 10,403 + 28,661 = 876,192)
 - Input source file has 890,161 records
-- The initial parser records was 889,851 (890,161 - 889,851 = 310 where 17 and 293 duplicates are removed from drug-disease and target-disease)
-- Final parser output has 887,888 records with duplicates.
-- 11,213 records are removed from final parser output due to duplicated _id (mostly from records with the same chebi/pubchem_cid and UniProtKB)
+- The initial parser records were 889,851 (890,161 - 889,851 = 310 where 17 and 293 duplicates are removed from drug-disease and target-disease)
+- 13,659 records are removed from the final parser output due to duplicated _id (mostly from records with the same CHEBI/PUBCHEM.COMPOUND and UniProtKB)
 
 <details><summary>click to expand for biolink prefix and predicate</summary>
   
@@ -60,9 +60,9 @@ Last Updated: 07/10/23
 
 |Drug-Disease (treats))| subject (SmallMolecule) | Number of records | object (Disease) | Number of records |
 |:--------------------------:|:-----------------------:|:-----------------:|:----------------:|:-----------------:|
-|28,667|chebi|3,824|icd11|28,667|
-||pubchem_compound|11,663|mondo|3,847|
-||ttd_drug_id|28,667|||
+|28,661|chebi| 3842 |icd11|28,661|
+||pubchem_compound| 7815 |mondo| 3844 |
+||ttd_drug_id|28,661|||
 
   
 <details><summary>click to expand for count of input data source</summary>
@@ -73,10 +73,10 @@ Last Updated: 07/10/23
 | --- | --- | ---|
 | TTDDRUID | 22,597 ||
 | DRUGNAME  | 22,597 ||
-| INDICATI | 28,978 | *parser records |
+| INDICATI | 28,978 | *input records |
 
 - Parser merged TTDDRUGID with the same INDICATI ICD11
-- 311 duplicated records are merged
+- 317 duplicated records are merged
 
 </details>
 
@@ -89,8 +89,8 @@ Last Updated: 07/10/23
 
 |Target-Disease (target_for))| subject (Protein) | Number of records | object (Disease) | Number of records |
 |:--------------------------:|:-----------------------:|:-----------------:|:----------------:|:-----------------:|
-|10,411|ttd_target_id|10,411|icd11|10,411|
-||uniprotkb|6,183|mondo|1,026|
+|10,403|ttd_target_id|10,403|icd11|10,403|
+||uniprotkb|6,177|mondo|1,018|
 
 <details><summary>click to expand for count of input data source</summary>
   
@@ -100,10 +100,11 @@ Last Updated: 07/10/23
 | --- | --- | --- |
 | TARGETID | 2,373 ||
 | TARGNAME  | 2,373 ||
-| INDICATI | 10,428 |*parser records |
+| INDICATI | 10,428 | *input records |
 
 - Parser merged TARGETID with the same INDICATI ICD11
 - 17 duplicated TARGETID + INDICATI ICD11: 10428 - 10411 = 17
+- Additional 8 duplicated records were removed after mapping icd11 to mondo and ttd_target_id to uniprotkb
 
 </details>
 
@@ -114,9 +115,9 @@ Last Updated: 07/10/23
 
 |Drug-Target (interacts_with)| subject (SmallMolecule) | Number of records | object (Protein) | Number of records |
 |:--------------------------:|:-----------------------:|:-----------------:|:----------------:|:-----------------:|
-|42,718|chebi|6892|uniprotkb|28,509|
-||pubchem_compound|33,744|ttd_target_id|42,718|
-||ttd_drug_id|42,718|||
+|31,174|chebi|4,550|uniprotkb|19,836|
+||pubchem_compound|15,865|ttd_target_id|31,174|
+||ttd_drug_id|31,174|||
 
 <details><summary>click to expand for count of input data source</summary>
 
@@ -129,7 +130,8 @@ Last Updated: 07/10/23
 | MOA | 44,663 |
 | Highest_status | 44,663 |
 
-- 1,945 duplicated drug-target pairs are removed (due to the same pubchem_compound or chebi with different ttd drug ids)
+- 13,460 drug-target pairs overlapped with the P1-09 data, which were dealt together with the P1-09 parser
+- The left 31,174 (44,663-13,460 = 31,203) were included in the output of this parser and 29 duplicated records were removed. (31,203-31,174 = 29)
 
 </details>
 
@@ -181,3 +183,12 @@ Last Updated: 07/10/23
 | Activity | 803,580 |
 
 </details>
+
+## Merged P1-07 and P1-09:
+|Drug-Target_Activity (interacts_with)| subject (SmallMolecule) | Number of records | object (Protein) | Number of records |
+|:--------------------------:|:-----------------------:|:-----------------:|:----------------:|:-----------------:|
+|834,616|pubchem_compound|819,307|uniprotkb|500,703|
+||ttd_drug_id|834,616|ttd_target_id|834,616|
+
+- 138 (803580+31174-834616 = 138) duplicated records were removed
+
