@@ -425,7 +425,12 @@ def load_drug_dis_data(file_path):
             subject_node["name"] = drug_name
             subject_node["type"] = "biolink:SmallMolecule"
         else:
-            subject_node = {"id": f"ttd_drug_id:{drug_id}", "ttd_drug_id": drug_id, "type": "biolink:SmallMolecule"}
+            subject_node = {
+                "id": f"ttd_drug_id:{drug_id}",
+                "ttd_drug_id": drug_id,
+                "name": drug_name,
+                "type": "biolink:SmallMolecule",
+            }
 
         output_dict = {
             "_id": f"{subject_node['id'].split(':')[1]}_treats_{object_node['id'].split(':')[1]}",
