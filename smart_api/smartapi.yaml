@@ -173,8 +173,8 @@ paths:
       - "$ref": "#/components/parameters/facets"
       - "$ref": "#/components/parameters/facet_size"
       - "$ref": "#/components/parameters/dotfield"
-      ## these are noted in the /spec endpoint; commenting out for now
       - "$ref": "#/components/parameters/aggs"
+      ## these are noted in the /spec endpoint; commenting out for now
       # - "$ref": "#/components/parameters/userquery"
       # - "$ref": "#/components/parameters/explain"
       # - "$ref": "#/components/parameters/raw"
