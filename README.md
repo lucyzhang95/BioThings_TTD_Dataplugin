@@ -28,8 +28,8 @@ Last Updated: 07/26/23
 
 ## X-BTE biolink predicates:
 - interacts_with
-- treats
-- target_for
+- treats (reverse: treated_by)
+- target_for (reverse: has_target)
 - biomarker_for
 
 </details> 
