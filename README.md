@@ -9,12 +9,13 @@ Last Updated: 07/26/23
 
 |Entity| Count |
 |:--|:-----:|
-|Total records| 876,192 |
+|Total records| 876,046 |
 
-- Final total records 876,192 (834,616 + 2,512 + 10,403 + 28,661 = 876,192)
+- Final total records 876,046 (834,616 + 2,512 + 10,403 + 28,661 = 876,192 - 146 = 876,046)
 - Input source file has 890,161 records
-- The initial parser records were 889,851 (890,161 - 889,851 = 310 where 17 and 293 duplicates are removed from drug-disease and target-disease)
-- 13,659 records are removed from the final parser output due to duplicated _id (mostly from records with the same CHEBI/PUBCHEM.COMPOUND and UniProtKB)
+- The initial parser records were 889,851 (890,161 - 889,851 = 310 where 17 and 293 duplicates were removed from drug-disease and target-disease)
+- 13,659 records were removed from the final parser output due to duplicated _id (mostly from records with the same CHEBI/PUBCHEM.COMPOUND and UniProtKB)
+- Additional 146 records were removed due to N.A. in the icd11 field. 
 
 <details><summary>click to expand for biolink prefix and predicate</summary>
   
