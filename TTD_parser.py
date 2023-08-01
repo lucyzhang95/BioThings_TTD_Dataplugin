@@ -233,12 +233,14 @@ def get_target_info(file_path):
     target_info = None
     uniprot_class = UniprotMapping(file_path)
     uniprot_info = uniprot_class.run_async_tasks()
+
     for data in uniprot_info:
         uniprot_dict = {d["ttd_target_id"]: d for d in data}
-
         for line in tabfile_feeder(target_info_file, header=40):
             if line != ["", "", "", "", ""]:
                 if line[1].startswith("TARGETID"):
+                    if target_info:
+                        yield target_info
                     if line[2] in uniprot_dict:
                         target_info = {"ttd_target_id": line[2], "uniprotkb": uniprot_dict[line[2]]["uniprot"]}
                     else:
@@ -247,9 +249,11 @@ def get_target_info(file_path):
                     target_info["target_type"] = line[2].lower()
                 elif "BIOCLASS" in line[1]:
                     target_info["bioclass"] = line[2]
+                elif "TARGNAME" in line[1]:
+                    target_info["name"] = line[2]
 
-            else:
-                yield target_info
+    if target_info:
+        yield target_info
 
 
 def mapping_drug_id(file_path):
@@ -265,10 +269,16 @@ def mapping_drug_id(file_path):
     assert os.path.exists(drug_mapping_file)
 
     drug_mapping_info = None
+
     for line in tabfile_feeder(drug_mapping_file, header=28):
         if line != ["", "", ""]:  # empty lines in the txt file need to be removed
             if line[1].startswith("TTDDRUID"):
-                drug_mapping_info = {"ttd_drug_id": line[2]}
+                if drug_mapping_info:
+                    yield drug_mapping_info
+                current_drug_id = line[2]
+                drug_mapping_info = {"ttd_drug_id": current_drug_id}
+            elif line[1].startswith("DRUGNAME"):
+                drug_mapping_info.update({"name": line[2]})
             elif line[1].startswith("PUBCHCID"):
                 if ";" in line[2]:
                     drug_mapping_info["pubchem_compound"] = [cid.strip() for cid in line[2].split(";")]
@@ -277,8 +287,8 @@ def mapping_drug_id(file_path):
             elif line[1].startswith("ChEBI_ID"):
                 drug_mapping_info["chebi"] = line[2].split(":")[1]
 
-            if drug_mapping_info:
-                yield drug_mapping_info
+    if drug_mapping_info:
+        yield drug_mapping_info
 
 
 def cleanup_icds(line, icd_prefix):
@@ -671,6 +681,8 @@ def load_drug_target_act(file_path):
     drug_target_data = pd.read_excel(drug_targ_file, engine="openpyxl").to_dict(orient="records")
 
     target_info_d = {d["ttd_target_id"]: d for d in get_target_info(file_path)}
+    drug_mapping_info = {d["ttd_drug_id"]: d for d in mapping_drug_id(file_path)}
+
     drug_target_dict = {
         (dicts["TargetID"], dicts["DrugID"]): {
             "trial_status": dicts["Highest_status"].lower(),
@@ -682,12 +694,20 @@ def load_drug_target_act(file_path):
     pattern_not_matched = []
 
     for line in tabfile_feeder(activity_file, header=1):
-        subject_node = {
-            "id": f"PUBCHEM.COMPOUND:{line[2]}",
-            "pubchem_compound": line[2],
-            "ttd_drug_id": line[1],
-            "type": "biolink:SmallMolecule",
-        }
+        if line[1] in drug_mapping_info:
+            subject_node = {
+                "id": f"PUBCHEM.COMPOUND:{line[2]}",
+                "pubchem_compound": line[2],
+                "type": "biolink:SmallMolecule",
+            }
+            subject_node.update(drug_mapping_info[line[1]])
+        else:
+            subject_node = {
+                "id": f"PUBCHEM.COMPOUND:{line[2]}",
+                "pubchem_compound": line[2],
+                "ttd_drug_id": line[1],
+                "type": "biolink:SmallMolecule",
+            }
 
         if line[0] in target_info_d:
             if "uniprotkb" in target_info_d[line[0]]:
@@ -707,7 +727,9 @@ def load_drug_target_act(file_path):
             association[pattern.groups()[0].lower()] = pattern.groups()[1].replace(" ", "")
         else:
             pattern_not_matched.append(line[3])
+            print("Regex pattern not matched:", pattern_not_matched)
 
+        # dt_pair is drug-target pair
         dt_pair = (line[0], line[1])
         if dt_pair in drug_target_dict.keys():
             if drug_target_dict[dt_pair]["moa"] != ".":
@@ -882,4 +904,6 @@ def load_data(file_path):
     sorted_docs = sorted(doc_list, key=itemgetter("_id"))
 
     for doc in sorted_docs:
-        yield doc
+        # some icd11 has N.A. as value, so removed records with N.A. in _id
+        if "N.A." not in doc["_id"]:
+            yield doc
