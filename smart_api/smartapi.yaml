@@ -766,7 +766,7 @@ components:
           "$ref": "#/components/x-bte-response-mapping/mondo-object"
         # testExamples:
         #   - qInput: "PUBCHEM.COMPOUND:118063735"       ## LMB763 (Nidufexor)
-        #     oneOutput: "MONDO:0004790"                 ## Non-alcoholic steatohepatitis
+        #     oneOutput: "MONDO:0004790"                 ## fatty liver disease
     pubchem_treats_mondo-rev:
       - supportBatch: true
         useTemplating: true
@@ -795,7 +795,7 @@ components:
           "$ref": "#/components/x-bte-response-mapping/pubchem-subject"
         # testExamples:
         #   - qInput: "MONDO:0021094"                      ## Human immunodeficiency virus infection
-        #     oneOutput: "PUBCHEM.COMPOUND:103596027"      ## GS-1156
+        #     oneOutput: "PUBCHEM.COMPOUND:103596027"      ## GS-1156 (8-(3-Chloro-5-(trifluoromethyl)pyridin-2-yl)-8-azabicyclo[3.2.1]octan-3-one)
     pubchem_treats_icd11:
     ##   url: https://biothings.transltr.io/ttd/query?q=_exists_:subject.pubchem_compound%20AND%20association.predicate:%22biolink:treats%22%20AND%20_exists_:object.icd11%20AND%20NOT%20_exists_:object.mondo
     ##   9985 records
@@ -1025,7 +1025,7 @@ components:
           "$ref": "#/components/x-bte-response-mapping/mondo-object"
         # testExamples:
         #   - qInput: "UniProtKB:Q08722"         ## Leukocyte surface antigen CD47
-        #     oneOutput: "MONDO:0001351"         ## Ovarian cancer
+        #     oneOutput: "MONDO:0001351"         ## Ovarian cancer (uterine adnexa cancer)
     uniprotkb_target_for_mondo-rev:
       - supportBatch: true
         useTemplating: true
@@ -1128,7 +1128,7 @@ components:
           "$ref": "#/components/x-bte-response-mapping/uniprotkb-subject"
         # testExamples:
         #   - qInput: "ICD11:6D71"                    ## Mild neurocognitive disorder
-        #     oneOutput: "UniProtKB:Q92542"           ## Gamma-secretase (GS)
+        #     oneOutput: "UniProtKB:Q92542"           ## Gamma-secretase (GS) NCSTN -> checked uniprotkb that NCSTN is an essential subunit of the gamma-secretase complex
     ttd_target_id_target_for_mondo:
       ## url: https://biothings.transltr.io/ttd/query?q=_exists_:subject.ttd_target_id%20AND%20association.predicate:%22biolink:target_for%22%20AND%20_exists_:object.mondo%20AND%20NOT%20_exists_:subject.uniprotkb
       ## 417 records
@@ -1197,7 +1197,7 @@ components:
         response_mapping:
           "$ref": "#/components/x-bte-response-mapping/ttd_target_id-subject"
         # testExamples:
-        #   - qInput: "MONDO:0001351"                     ## Ovarian cancer
+        #   - qInput: "MONDO:0001351"                     ## Ovarian cancer (uterine adnexa cancer)
         #     oneOutput: "TTD.TARGET:T99948"              ## Programmed cell death 1 ligand 1 (PD-L1)
     ttd_target_id_target_for_icd11:
       ## url: https://biothings.transltr.io/ttd/query?q=_exists_:subject.ttd_target_id%20AND%20association.predicate:%22biolink:target_for%22%20AND%20_exists_:object.icd11%20AND%20NOT%20_exists_:subject.uniprotkb%20AND%20NOT%20_exists_object.mondo
